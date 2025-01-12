@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'ScanOrTypeScreen.dart';
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({Key? key}) : super(key: key);
@@ -40,7 +40,8 @@ class HomeScreen extends StatelessWidget {
               IconButton(
                 icon: Icon(Icons.menu, color: Colors.black),
                 onPressed: () {
-                },
+                  // Add functionality if needed
+                }, // ✅ Removed the incorrect `);`
               ),
             ],
           ),
@@ -59,7 +60,6 @@ class HomeScreen extends StatelessWidget {
               GestureDetector(
                 onTap: () {
 
-
                 },
                 child: Container(
                   width: double.infinity,
@@ -75,9 +75,9 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       Expanded(
                         flex: 3,
                         child: Column(
@@ -92,15 +92,13 @@ class HomeScreen extends StatelessWidget {
                               ),
                             ),
                             SizedBox(height: screenHeight * 0.01),
-
-
                           ],
                         ),
                       ),
-
+                    ],
                   ),
-
-               ),
+                ),
+              ),
 
               SizedBox(height: screenHeight * 0.03),
 
@@ -108,6 +106,12 @@ class HomeScreen extends StatelessWidget {
               Center(
                 child: ElevatedButton(
                   onPressed: () {
+                    // Navigate to ScanOrTypeScreen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ScanOrTypeScreen()),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.purple,
@@ -139,7 +143,6 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               SizedBox(height: screenHeight * 0.01),
-
             ],
           ),
         ),
