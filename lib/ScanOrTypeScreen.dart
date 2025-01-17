@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'TypeFood.dart';
+import 'ScanFood.dart';
 
 class ScanOrTypeScreen extends StatefulWidget {
   @override
@@ -62,22 +63,20 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
                 Text("Scan"),
               ],
             ),
-            const Spacer(), // ✅ Correct use of Spacer
+            Spacer(),
             ElevatedButton(
               onPressed: () {
                 if (isTypeSelected) {
-                  // Navigate to TypeFood screen
+                  // Navigate to Screen 1
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => TypeFood()),
                   );
-                } else {
-                  // ✅ Fix: Add a valid destination screen here
+                } else if(!isTypeSelected) {
+
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            Container()), // Replace with actual Scan screen
+                    MaterialPageRoute(builder: (context) => ScanFood()),
                   );
                 }
               },
