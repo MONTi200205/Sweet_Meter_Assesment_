@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'History.dart';
 
 class FoodSugarEntry {
   final String foodName;
@@ -27,7 +28,7 @@ class Result extends StatefulWidget {
   final String foodName;
   final String sugarLevel;
 
-  const Result({Key? key, required this.foodName, required this.sugarLevel}) : super(key: key);
+  Result({required this.foodName, required this.sugarLevel});
 
   @override
   _ResultState createState() => _ResultState();
@@ -45,21 +46,37 @@ class _ResultState extends State<Result> {
     }
   }
 
-  // Function to save data in SharedPreferences
   Future<void> _saveData(String email, String foodName, String sugarLevel) async {
-    final prefs = await SharedPreferences.getInstance();
-    final String key = '$userFoodDataKey-$email';
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    List<String> savedEntries = prefs.getStringList(key) ?? [];
+      // Get the current data map or initialize it
+      final dataMapString = prefs.getString(userFoodDataKey);
+      final Map<String, dynamic> dataMap =
+      dataMapString != null ? json.decode(dataMapString) : {};
 
-    // Create a new entry
-    FoodSugarEntry newEntry = FoodSugarEntry(foodName: foodName, sugarLevel: sugarLevel);
+      // Retrieve or initialize the list for the current user
+      final List<dynamic> userList = dataMap[email] ?? [];
+      final List<FoodSugarEntry> userEntries = userList
+          .map((e) => FoodSugarEntry.fromMap(e as Map<String, dynamic>))
+          .toList();
 
-    // Append new entry
-    savedEntries.add(jsonEncode(newEntry.toMap()));
+      // Add the new entry
+      userEntries.insert(0, FoodSugarEntry(foodName: foodName, sugarLevel: sugarLevel));
 
-    // Save updated list
-    await prefs.setStringList(key, savedEntries);
+      // Limit to 10 entries per user
+      if (userEntries.length > 10) {
+        userEntries.removeLast();
+      }
+
+      // Update the map and save it back to SharedPreferences
+      dataMap[email] = userEntries.map((e) => e.toMap()).toList();
+      await prefs.setString(userFoodDataKey, json.encode(dataMap));
+
+      debugPrint('Data saved for $email: $foodName, $sugarLevel');
+    } catch (e) {
+      debugPrint('Error saving data: $e');
+    }
   }
 
   @override
@@ -68,7 +85,7 @@ class _ResultState extends State<Result> {
     return Scaffold(
       backgroundColor: Colors.grey[900],
       appBar: AppBar(
-        title: const Text('Result'),
+        title: Text('Result'),
         backgroundColor: Colors.purple,
       ),
       body: Center(
@@ -77,25 +94,30 @@ class _ResultState extends State<Result> {
           children: [
             Text(
               'Food: ${widget.foodName}',
-              style: const TextStyle(fontSize: 24, color: Colors.white),
+              style: TextStyle(fontSize: 24, color: Colors.white),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               'Sugar Level: ${widget.sugarLevel}',
-              style: const TextStyle(fontSize: 24, color: Colors.white),
+              style: TextStyle(fontSize: 24, color: Colors.white),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Navigate to History screen (assuming History screen exists)
-                Navigator.pushNamed(context, '/history');
+                // Navigate to History screen to view saved data
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => History(),
+                  ),
+                );
               },
-              child: const Text('View History'),
+              child: Text('View History'),
             ),
             const SizedBox(height: 16),
             Text(
               "Logged in as: ${user?.email ?? 'Unknown'}",
-              style: const TextStyle(fontSize: 16, color: Colors.white),
+              style: const TextStyle(fontSize: 16),
             ),
           ],
         ),
