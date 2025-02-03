@@ -96,6 +96,7 @@ flutter:
   # see https://flutter.dev/to/font-from-package
   assets:
     - assets/log.jpg
+    - assets/Background.png
   fonts:
     - family: Agbalumo
       fonts:

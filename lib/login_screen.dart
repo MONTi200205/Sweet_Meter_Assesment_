@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart';
+import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -45,6 +46,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 stops: [0.4, 0.9],
               ),
             ),
+          ),
+          Container(
+            width: size.width,
+            height: size.height,
+            color:Tinting(context),
           ),
           // Main Content
           SafeArea(
@@ -122,6 +128,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 .signInWithEmailAndPassword(
                               email: email,
                               password: password,
+                            );
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => HomeScreen()),
                             );
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(

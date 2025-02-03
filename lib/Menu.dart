@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:math';
 import 'login_screen.dart';
+import 'package:sweet_meter_assesment/utils/Darkmode.dart';
+import 'dart:convert';
 
 class Menu {
   OverlayEntry? _overlayEntry;
@@ -10,7 +12,12 @@ class Menu {
   bool _isMenuVisible = false;
 
   Menu(this._menuKey);
-
+  void hideMenu() {
+    if (!_isMenuVisible) return; // Prevent duplicate hide calls
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    _isMenuVisible = false;
+  }
   void showMenu(BuildContext context) {
     if (_isMenuVisible) return; // Prevent multiple menu entries
     _isMenuVisible = true;
@@ -51,7 +58,7 @@ class Menu {
                   left: leftPosition,
                   child: Material(
                     elevation: 6.0,
-                    color: Colors.white,
+                    color: IconColor(context),
                     borderRadius: BorderRadius.circular(20.0),
                     child: Container(
                       width: menuWidth,
@@ -59,7 +66,7 @@ class Menu {
                       padding: EdgeInsets.all(screenWidth * 0.05),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(20.0),
-                        color: Colors.white,
+                        color: Background(context),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,7 +90,8 @@ class Menu {
                               style: TextStyle(fontSize: screenWidth * 0.045),
                             ),
                             onTap: () {
-                              hideMenu(); // Hide the menu first
+                              hideMenu();
+                              hideMenu;// Hide the menu first
                               print("Account selected");
                             },
                           ),
@@ -93,14 +101,26 @@ class Menu {
                               "Delete History",
                               style: TextStyle(fontSize: screenWidth * 0.045),
                             ),
-                            onTap: () async {
-                              hideMenu(); // Hide the menu first
-                              final prefs = await SharedPreferences.getInstance();
-                              if (prefs.containsKey('foodList')) {
-                                await prefs.remove('foodList');
+                              onTap: () async {
+                                hideMenu();
+                                final prefs = await SharedPreferences.getInstance();
+                                final email = FirebaseAuth.instance.currentUser?.email;
+
+                                final dataMapString = prefs.getString('userFoodData');
+                                if (dataMapString != null) {
+                                  final Map<String, dynamic> dataMap = json.decode(dataMapString);
+
+                                  if (dataMap.containsKey(email)) {
+                                    dataMap.remove(email); // Remove only the current user's data
+                                    await prefs.setString('userFoodData', json.encode(dataMap)); // Save the updated data
+                                    print('Food history cleared for $email');
+                                  } else {
+                                    print('No history found for $email');
+                                  }
+                                } else {
+                                  print('No food history found at all');
+                                }
                               }
-                              print('Food history cleared!');
-                            },
                           ),
                           ListTile(
                             leading: Icon(Icons.logout, color: Colors.orange),
@@ -135,12 +155,5 @@ class Menu {
 
       Overlay.of(context)?.insert(_overlayEntry!);
     });
-  }
-
-  void hideMenu() {
-    if (!_isMenuVisible) return; // Prevent duplicate hide calls
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-    _isMenuVisible = false;
   }
 }

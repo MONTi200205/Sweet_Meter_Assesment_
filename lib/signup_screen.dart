@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -73,6 +74,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 stops: [0.4, 0.9],
               ),
             ),
+          ),
+          Container(
+            width: size.width,
+            height: size.height,
+            color:Tinting(context),
           ),
           // Main Content
           SafeArea(

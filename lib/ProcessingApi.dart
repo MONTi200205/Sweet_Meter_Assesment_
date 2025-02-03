@@ -3,6 +3,8 @@ import 'dart:async'; // For delay
 import 'dart:convert'; // For JSON parsing
 import 'package:http/http.dart' as http;
 import 'result.dart'; // Import Result screen
+import 'home_screen.dart';
+import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 
 class Processing extends StatefulWidget {
   final String foodName;
@@ -35,7 +37,8 @@ class _ProcessingState extends State<Processing> {
         final List products = searchData['products'];
 
         if (products.isNotEmpty) {
-          final barcode = products[0]['code']; // Get the first product's barcode
+          final barcode =
+              products[0]['code']; // Get the first product's barcode
 
           // Step 2: Use the barcode to fetch detailed product information
           await fetchProductDetails(barcode);
@@ -46,7 +49,8 @@ class _ProcessingState extends State<Processing> {
         }
       } else {
         setState(() {
-          sugarLevel = 'Failed to search for products. Error: ${searchResponse.statusCode}';
+          sugarLevel =
+              'Failed to search for products. Error: ${searchResponse.statusCode}';
         });
       }
     } catch (e) {
@@ -57,7 +61,8 @@ class _ProcessingState extends State<Processing> {
   }
 
   Future<void> fetchProductDetails(String barcode) async {
-    final String productApiUrl = 'https://world.openfoodfacts.org/api/v0/product/$barcode.json';
+    final String productApiUrl =
+        'https://world.openfoodfacts.org/api/v0/product/$barcode.json';
 
     try {
       final productResponse = await http.get(Uri.parse(productApiUrl));
@@ -81,7 +86,8 @@ class _ProcessingState extends State<Processing> {
         }
       } else {
         setState(() {
-          sugarLevel = 'Failed to fetch product details. Error: ${productResponse.statusCode}';
+          sugarLevel =
+              'Failed to fetch product details. Error: ${productResponse.statusCode}';
         });
       }
     } catch (e) {
@@ -104,31 +110,72 @@ class _ProcessingState extends State<Processing> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[900],
-      appBar: AppBar(
-        title: Text('Processing'),
-        backgroundColor: Colors.purple,
-      ),
-      body: Center(
-        child: sugarLevel == null
-            ? Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: Colors.purple),
-            SizedBox(height: 20),
-            Text(
-              'Processing ${widget.foodName}...',
-              style: TextStyle(fontSize: 24, color: Colors.white),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        )
-            : Text(
-          'Processing complete!',
-          style: TextStyle(fontSize: 24, color: Colors.white),
+    return Stack(
+      children: [
+        // Background Color
+        Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: Background(context),
         ),
-      ),
+
+        // Background Image Overlay
+        Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage("assets/Background.png"),
+              fit: BoxFit.cover, // Cover the entire screen
+              colorFilter: ColorFilter.mode(
+                Colors.black.withOpacity(0.3), // Adjust the overlay darkness
+                BlendMode.darken, // Blends with background color
+              ),
+            ),
+          ),
+        ),
+
+        Scaffold(
+          backgroundColor: Background(context),
+          appBar: AppBar(
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back, color: IconColor(context)),
+              onPressed: () => Navigator.pop(context),
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.home, color: IconColor(context)),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => HomeScreen()),
+                  );
+                },
+              ),
+            ],
+            backgroundColor: Colors.transparent,
+          ),
+          body: Center(
+            child: sugarLevel == null
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(color: Colors.purple),
+                      SizedBox(height: 20),
+                      Text(
+                        'Processing ${widget.foodName}...',
+                        style: TextStyle(fontSize: 24, color: BlackText(context)),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  )
+                : Text(
+                    'Connection Error !',
+                    style: TextStyle(fontSize: 24, color: Colors.white),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }
