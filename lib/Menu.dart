@@ -5,6 +5,7 @@ import 'dart:math';
 import 'login_screen.dart';
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';  // If using Firestore
 
 class Menu {
   OverlayEntry? _overlayEntry;
@@ -18,12 +19,14 @@ class Menu {
     _overlayEntry = null;
     _isMenuVisible = false;
   }
+
   void showMenu(BuildContext context) {
     if (_isMenuVisible) return; // Prevent multiple menu entries
     _isMenuVisible = true;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final RenderBox? renderBox = _menuKey.currentContext?.findRenderObject() as RenderBox?;
+      final RenderBox? renderBox =
+          _menuKey.currentContext?.findRenderObject() as RenderBox?;
 
       if (renderBox == null) {
         _isMenuVisible = false; // Reset if rendering fails
@@ -43,7 +46,8 @@ class Menu {
       double topPosition = offset.dy + size.height;
       double leftPosition = offset.dx - menuWidth * 0.2;
 
-      topPosition = min(topPosition, screenHeight - menuHeight - safePadding.bottom - 10);
+      topPosition =
+          min(topPosition, screenHeight - menuHeight - safePadding.bottom - 10);
       leftPosition = max(10, min(leftPosition, screenWidth - menuWidth - 10));
 
       _overlayEntry = OverlayEntry(
@@ -84,44 +88,84 @@ class Menu {
                           Divider(color: Colors.grey),
                           SizedBox(height: screenHeight * 0.02),
                           ListTile(
-                            leading: Icon(Icons.account_circle, color: Colors.purple),
+                            leading: Icon(Icons.account_circle,
+                                color: Colors.purple),
                             title: Text(
                               "Account",
                               style: TextStyle(fontSize: screenWidth * 0.045),
                             ),
                             onTap: () {
                               hideMenu();
-                              hideMenu;// Hide the menu first
+                              hideMenu; // Hide the menu first
                               print("Account selected");
                             },
                           ),
                           ListTile(
-                            leading: Icon(Icons.delete, color: Colors.red),
-                            title: Text(
-                              "Delete History",
-                              style: TextStyle(fontSize: screenWidth * 0.045),
-                            ),
+                              leading: Icon(Icons.delete, color: Colors.red),
+                              title: Text(
+                                "Delete History",
+                                style: TextStyle(fontSize: screenWidth * 0.045),
+                              ),
                               onTap: () async {
                                 hideMenu();
-                                final prefs = await SharedPreferences.getInstance();
-                                final email = FirebaseAuth.instance.currentUser?.email;
 
-                                final dataMapString = prefs.getString('userFoodData');
+                                // 1. Get the current user's email
+                                final email =
+                                    FirebaseAuth.instance.currentUser?.email;
+
+                                // 2. Remove locally from SharedPreferences
+                                final prefs =
+                                    await SharedPreferences.getInstance();
+                                final dataMapString =
+                                    prefs.getString('userFoodData');
+
                                 if (dataMapString != null) {
-                                  final Map<String, dynamic> dataMap = json.decode(dataMapString);
+                                  final Map<String, dynamic> dataMap =
+                                      json.decode(dataMapString);
 
                                   if (dataMap.containsKey(email)) {
-                                    dataMap.remove(email); // Remove only the current user's data
-                                    await prefs.setString('userFoodData', json.encode(dataMap)); // Save the updated data
-                                    print('Food history cleared for $email');
+                                    dataMap.remove(
+                                        email); // Remove only the current user's data
+                                    await prefs.setString(
+                                        'userFoodData',
+                                        json.encode(
+                                            dataMap)); // Save the updated data
+                                    print(
+                                        'Food history cleared locally for $email');
                                   } else {
-                                    print('No history found for $email');
+                                    print('No local history found for $email');
                                   }
                                 } else {
-                                  print('No food history found at all');
+                                  print('No local food history found');
                                 }
-                              }
-                          ),
+
+                                // 3. Remove from Firebase (Firestore example)
+                                if (email != null) {
+                                  try {
+                                    final userRef = FirebaseFirestore.instance
+                                        .collection('users')
+                                        .doc(email);
+
+                                    // Assuming food history is a subcollection of the user document
+                                    final foodHistoryRef =
+                                        userRef.collection('foodHistory');
+
+                                    // Delete all food history documents for this user
+                                    final snapshot = await foodHistoryRef.get();
+
+                                    for (var doc in snapshot.docs) {
+                                      await doc.reference
+                                          .delete(); // Delete each food history document
+                                    }
+
+                                    print(
+                                        'Food history cleared from Firebase for $email');
+                                  } catch (e) {
+                                    print(
+                                        'Error clearing food history from Firebase: $e');
+                                  }
+                                }
+                              }),
                           ListTile(
                             leading: Icon(Icons.logout, color: Colors.orange),
                             title: Text(
@@ -134,7 +178,8 @@ class Menu {
                               try {
                                 await FirebaseAuth.instance.signOut();
                                 Navigator.of(context).pushReplacement(
-                                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                                  MaterialPageRoute(
+                                      builder: (context) => LoginScreen()),
                                 );
                                 print('Logout successful!');
                               } catch (e) {

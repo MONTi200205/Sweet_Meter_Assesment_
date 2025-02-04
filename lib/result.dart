@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'History.dart';
 import 'home_screen.dart';
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
@@ -48,39 +49,63 @@ class _ResultState extends State<Result> {
     }
   }
 
-  Future<void> _saveData(
-      String email, String foodName, String sugarLevel) async {
+  /// Save Data Locally & Sync to Firestore
+  Future<void> _saveData(String email, String foodName, String sugarLevel) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final userDataMap = await _syncWithFirestore(email);
 
-      // Get the current data map or initialize it
+      // Load existing local data
       final dataMapString = prefs.getString(userFoodDataKey);
-      final Map<String, dynamic> dataMap =
-          dataMapString != null ? json.decode(dataMapString) : {};
+      final Map<String, dynamic> dataMap = dataMapString != null ? json.decode(dataMapString) : {};
 
-      // Retrieve or initialize the list for the current user
-      final List<dynamic> userList = dataMap[email] ?? [];
+      // Retrieve or initialize the user’s data list from local storage or Firestore
+      final List<dynamic> userList = dataMap[email] ?? userDataMap[email] ?? [];
       final List<FoodSugarEntry> userEntries = userList
           .map((e) => FoodSugarEntry.fromMap(e as Map<String, dynamic>))
           .toList();
 
-      // Add the new entry
-      userEntries.insert(
-          0, FoodSugarEntry(foodName: foodName, sugarLevel: sugarLevel));
+      // Add new entry
+      userEntries.insert(0, FoodSugarEntry(foodName: foodName, sugarLevel: sugarLevel));
 
       // Limit to 10 entries per user
       if (userEntries.length > 10) {
         userEntries.removeLast();
       }
 
-      // Update the map and save it back to SharedPreferences
+      // Save updated list to local storage
       dataMap[email] = userEntries.map((e) => e.toMap()).toList();
       await prefs.setString(userFoodDataKey, json.encode(dataMap));
 
-      debugPrint('Data saved for $email: $foodName, $sugarLevel');
+      debugPrint('✅ Data saved locally for $email');
+
+      // 🔥 Upload updated data to Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(email)
+          .set({'foodEntries': userEntries.map((e) => e.toMap()).toList()});
+
+      debugPrint('✅ Data uploaded to Firestore for $email');
     } catch (e) {
-      debugPrint('Error saving data: $e');
+      debugPrint('❌ Error saving data: $e');
     }
+  }
+
+  /// Fetch data from Firestore & return it for merging
+  Future<Map<String, dynamic>> _syncWithFirestore(String email) async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(email).get();
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null && data.containsKey('foodEntries')) {
+          final List<dynamic> cloudEntries = data['foodEntries'];
+          return {email: cloudEntries};
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error syncing with Firestore: $e');
+    }
+    return {};
   }
 
   @override
@@ -102,10 +127,10 @@ class _ResultState extends State<Result> {
           decoration: BoxDecoration(
             image: DecorationImage(
               image: AssetImage("assets/Background.png"),
-              fit: BoxFit.cover, // Cover the entire screen
+              fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.3), // Adjust the overlay darkness
-                BlendMode.darken, // Blends with background color
+                Colors.black.withOpacity(0.3),
+                BlendMode.darken,
               ),
             ),
           ),
@@ -155,7 +180,7 @@ class _ResultState extends State<Result> {
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    // Navigate to History screen to view saved data
+                    // Navigate to History screen
                     Navigator.push(
                       context,
                       MaterialPageRoute(
