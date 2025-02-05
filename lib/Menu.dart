@@ -5,7 +5,7 @@ import 'dart:math';
 import 'login_screen.dart';
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';  // If using Firestore
+import 'package:cloud_firestore/cloud_firestore.dart'; // If using Firestore
 
 class Menu {
   OverlayEntry? _overlayEntry;
@@ -101,71 +101,65 @@ class Menu {
                             },
                           ),
                           ListTile(
-                              leading: Icon(Icons.delete, color: Colors.red),
-                              title: Text(
-                                "Delete History",
-                                style: TextStyle(fontSize: screenWidth * 0.045),
-                              ),
-                              onTap: () async {
-                                hideMenu();
+                            leading: Icon(Icons.delete, color: Colors.red),
+                            title: Text(
+                              "Delete History",
+                              style: TextStyle(fontSize: screenWidth * 0.045),
+                            ),
+                            onTap: () async {
+                              hideMenu();
 
-                                // 1. Get the current user's email
-                                final email =
-                                    FirebaseAuth.instance.currentUser?.email;
+                              // 1. Get the current user's email
+                              final email =
+                                  FirebaseAuth.instance.currentUser?.email;
 
-                                // 2. Remove locally from SharedPreferences
-                                final prefs =
-                                    await SharedPreferences.getInstance();
-                                final dataMapString =
-                                    prefs.getString('userFoodData');
+                              // 2. Remove locally from SharedPreferences
+                              final prefs =
+                                  await SharedPreferences.getInstance();
+                              final dataMapString =
+                                  prefs.getString('userFoodData');
 
-                                if (dataMapString != null) {
-                                  final Map<String, dynamic> dataMap =
-                                      json.decode(dataMapString);
+                              if (dataMapString != null) {
+                                final Map<String, dynamic> dataMap =
+                                    json.decode(dataMapString);
 
-                                  if (dataMap.containsKey(email)) {
-                                    dataMap.remove(
-                                        email); // Remove only the current user's data
-                                    await prefs.setString(
-                                        'userFoodData',
-                                        json.encode(
-                                            dataMap)); // Save the updated data
-                                    print(
-                                        'Food history cleared locally for $email');
-                                  } else {
-                                    print('No local history found for $email');
-                                  }
+                                if (dataMap.containsKey(email)) {
+                                  dataMap.remove(
+                                      email); // Remove only the current user's data
+                                  await prefs.setString(
+                                      'userFoodData',
+                                      json.encode(
+                                          dataMap)); // Save the updated data
+                                  print(
+                                      'Food history cleared locally for $email');
                                 } else {
-                                  print('No local food history found');
+                                  print('No local history found for $email');
                                 }
+                              } else {
+                                print('No local food history found');
+                              }
 
-                                // 3. Remove from Firebase (Firestore example)
-                                if (email != null) {
-                                  try {
-                                    final userRef = FirebaseFirestore.instance
-                                        .collection('users')
-                                        .doc(email);
+                              // 3. Remove all fields inside 'foodEntries' in Firebase
+                              if (email != null) {
+                                try {
+                                  final userRef = FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(email);
 
-                                    // Assuming food history is a subcollection of the user document
-                                    final foodHistoryRef =
-                                        userRef.collection('foodHistory');
+                                  // Clear the 'foodEntries' field
+                                  await userRef.update({
+                                    'foodEntries': FieldValue.delete(),
+                                  });
 
-                                    // Delete all food history documents for this user
-                                    final snapshot = await foodHistoryRef.get();
-
-                                    for (var doc in snapshot.docs) {
-                                      await doc.reference
-                                          .delete(); // Delete each food history document
-                                    }
-
-                                    print(
-                                        'Food history cleared from Firebase for $email');
-                                  } catch (e) {
-                                    print(
-                                        'Error clearing food history from Firebase: $e');
-                                  }
+                                  print(
+                                      'Food entries removed from Firebase for $email');
+                                } catch (e) {
+                                  print(
+                                      'Error removing food entries from Firebase: $e');
                                 }
-                              }),
+                              }
+                            },
+                          ),
                           ListTile(
                             leading: Icon(Icons.logout, color: Colors.orange),
                             title: Text(
