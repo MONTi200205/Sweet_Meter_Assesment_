@@ -7,6 +7,7 @@ import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 import 'OpenAi.dart';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'quotemanager.dart';
 
 // Function to fetch food history from SharedPreferences
 Future<Map<String, String>?> getLatestFoodEntry() async {
@@ -20,7 +21,7 @@ Future<Map<String, String>?> getLatestFoodEntry() async {
   if (email != null && dataMap.containsKey(email)) {
     final userFoodHistory = dataMap[email];
     if (userFoodHistory != null && userFoodHistory.isNotEmpty) {
-      final latestEntry = userFoodHistory.first;  // Get the most recent entry
+      final latestEntry = userFoodHistory.first; // Get the most recent entry
       return {
         'foodName': latestEntry['foodName'] ?? 'Unknown',
         'sugarLevel': latestEntry['sugarLevel'] ?? '0%'
@@ -56,9 +57,59 @@ Color _getColorForPercentage(double percentage) {
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _menuKey = GlobalKey();
+  String currentQuote = "";
+  late QuoteManager _quoteManager;
+  final OpenAIService _openAIService = OpenAIService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuotes();
+  }
+
+  Future<void> _loadQuotes() async {
+    _quoteManager = QuoteManager(onQuoteChanged: (quote) {
+      setState(() {
+        currentQuote = quote;
+      });
+    });
+
+    List<String> savedQuotes = await _openAIService.getSavedQuotes();
+    if (savedQuotes.isEmpty) {
+      String result = await _openAIService.generateAndSaveQuotes(10);
+      savedQuotes = await _openAIService.getSavedQuotes();
+    }
+    _quoteManager.loadQuotes(savedQuotes);
+  }
+
+  Future<void> _clearSavedQuotes() async {
+    await _quoteManager.clearSavedQuotes(); // Clear existing quotes
+    setState(() {
+      currentQuote = "All saved quotes have been removed.";
+    });
+
+    // Generate new quotes and reload them
+    String result = await _openAIService.generateAndSaveQuotes(10);
+    List<String> newQuotes = await _openAIService.getSavedQuotes();
+
+    setState(() {
+      _quoteManager.loadQuotes(newQuotes);
+    });
+  }
+  @override
+  void dispose() {
+    _quoteManager.stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,8 +131,7 @@ class HomeScreen extends StatelessWidget {
           height: double.infinity,
           decoration: BoxDecoration(
             image: DecorationImage(
-              image:
-                  AssetImage("assets/Background.png"),
+              image: AssetImage("assets/Background.png"),
               fit: BoxFit.cover, // Cover the entire screen
               colorFilter: ColorFilter.mode(
                 Colors.black.withOpacity(0.3), // Adjust the overlay darkness
@@ -194,13 +244,15 @@ class HomeScreen extends StatelessWidget {
                                 FutureBuilder<Map<String, String>?>(
                                   future: getLatestFoodEntry(),
                                   builder: (context, snapshot) {
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
                                       return CircularProgressIndicator();
                                     }
                                     if (snapshot.hasError) {
                                       return Text('Error: ${snapshot.error}');
                                     }
-                                    if (snapshot.hasData && snapshot.data != null) {
+                                    if (snapshot.hasData &&
+                                        snapshot.data != null) {
                                       return Text(
                                         snapshot.data!['foodName'] ?? "Unknown",
                                         style: TextStyle(
@@ -224,14 +276,19 @@ class HomeScreen extends StatelessWidget {
                                 FutureBuilder<Map<String, String>?>(
                                   future: getLatestFoodEntry(),
                                   builder: (context, snapshot) {
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
                                       return CircularProgressIndicator();
                                     }
                                     if (snapshot.hasError) {
                                       return Text('Error: ${snapshot.error}');
                                     }
-                                    if (snapshot.hasData && snapshot.data != null) {
-                                      double sugarPercentage = _extractPercentage(snapshot.data!['sugarLevel'] ?? '0');
+                                    if (snapshot.hasData &&
+                                        snapshot.data != null) {
+                                      double sugarPercentage =
+                                          _extractPercentage(
+                                              snapshot.data!['sugarLevel'] ??
+                                                  '0');
                                       return Column(
                                         children: [
                                           Text(
@@ -239,13 +296,16 @@ class HomeScreen extends StatelessWidget {
                                             style: TextStyle(
                                               fontSize: screenWidth * 0.05,
                                               fontWeight: FontWeight.bold,
-                                              color: _getColorForPercentage(sugarPercentage),
+                                              color: _getColorForPercentage(
+                                                  sugarPercentage),
                                             ),
                                           ),
-                                          SizedBox(height: screenHeight * 0.005),
+                                          SizedBox(
+                                              height: screenHeight * 0.005),
                                           Icon(
                                             Icons.circle,
-                                            color: _getColorForPercentage(sugarPercentage),
+                                            color: _getColorForPercentage(
+                                                sugarPercentage),
                                             size: screenWidth * 0.12,
                                           ),
                                         ],
@@ -297,15 +357,54 @@ class HomeScreen extends StatelessWidget {
 
                   // Eat Healthy Section
                   SizedBox(height: screenHeight * 0.01),
-                  Text(
-                    "Eat Healthy,",
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.045,
-                      fontWeight: FontWeight.bold,
-                      color: BlackText(context),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Eat Healthy,",
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.045,
+                          fontWeight: FontWeight.bold,
+                          color: BlackText(context),
+                        ),
+                      ),
+                      Builder(
+                        builder: (context) => IconButton(
+                          icon: Icon(Icons.refresh_rounded,
+                              color: IconColor(context)),
+                          onPressed: () {
+                            _clearSavedQuotes();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text("Quotes cleared successfully!")),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
+
                   SizedBox(height: screenHeight * 0.01),
+                  Center(
+                    child: SizedBox(
+                      width: screenWidth * 0.8, // Set width
+                      height:screenHeight * 0.3, // Set height
+                      child: Center( // Optional: Center text inside the box
+                        child: Center(
+                          child: Text(
+                            currentQuote,
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.06,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.white,
+                             // align: TextAlign.justify,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ) ,
+                  ),
+
                 ],
               ),
             ),
