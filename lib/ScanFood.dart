@@ -16,36 +16,44 @@ class _ScanFoodState extends State<ScanFood> {
   final ImagePicker _picker = ImagePicker();
   File? _image;
   String _result = "Image recognition result will appear here.";
-  final String apiKey = 'acc_52851fb94a70f06'; // Imagga API key
-  final String apiSecret =
-      'edd380e1dbd0b5d4c36e7000215e6285'; // r Imagga API secret
+
+  final String openAiApiKey = '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';
 
   Future<void> analyzeImage(File imageFile) async {
     final bytes = await imageFile.readAsBytes();
     String base64Image = base64Encode(bytes);
 
-    final url = Uri.parse('https://api.imagga.com/v2/tags');
+    final url = Uri.parse('https://api.openai.com/v1/chat/completions');
     final headers = {
-      'Authorization':
-          'Basic ' + base64Encode(utf8.encode('$apiKey:$apiSecret')),
+      'Authorization': 'Bearer $openAiApiKey',
+      'Content-Type': 'application/json',
     };
 
-    final request = http.MultipartRequest('POST', url)
-      ..headers.addAll(headers)
-      ..files.add(
-          http.MultipartFile.fromBytes('image', bytes, filename: 'image.jpg'));
+    final body = jsonEncode({
+      "model": "gpt-4-vision-preview",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a food recognition assistant. Identify the food item in the given image."
+        },
+        {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "What food is in this image? Provide only the name."},
+            {"type": "image_url", "image_url": "data:image/jpeg;base64,$base64Image"}
+          ]
+        }
+      ],
+      "max_tokens": 50
+    });
 
-    final response = await request.send();
+    final response = await http.post(url, headers: headers, body: body);
 
     if (response.statusCode == 200) {
-      final responseData = await http.Response.fromStream(response);
-      final data = json.decode(responseData.body);
-
-      if (data['result'] != null && data['result']['tags'] != null) {
-        final tags = data['result']['tags'];
-        final topTag = tags[0]['tag']['en']; // Get the top result
+      final data = json.decode(response.body);
+      if (data['choices'] != null && data['choices'][0]['message']['content'] != null) {
         setState(() {
-          _result = topTag; // Display only the top tag
+          _result = data['choices'][0]['message']['content'].trim();
         });
       } else {
         setState(() {
@@ -54,8 +62,7 @@ class _ScanFoodState extends State<ScanFood> {
       }
     } else {
       setState(() {
-        _result =
-            'Failed to recognize the image. Status code: ${response.statusCode}';
+        _result = 'Failed to recognize the image. Try again.';
       });
     }
   }
@@ -75,7 +82,6 @@ class _ScanFoodState extends State<ScanFood> {
 
   @override
   Widget build(BuildContext context) {
-    // Fetch screen width and height
     double screenHeight = MediaQuery.of(context).size.height;
     double screenWidth = MediaQuery.of(context).size.width;
 
@@ -95,14 +101,15 @@ class _ScanFoodState extends State<ScanFood> {
           decoration: BoxDecoration(
             image: DecorationImage(
               image: AssetImage("assets/Background.png"),
-              fit: BoxFit.cover, // Cover the entire screen
+              fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.3), // Adjust the overlay darkness
-                BlendMode.darken, // Blends with background color
+                Colors.black.withOpacity(0.3),
+                BlendMode.darken,
               ),
             ),
           ),
         ),
+
         Scaffold(
           backgroundColor: Background(context),
           appBar: AppBar(
@@ -133,12 +140,11 @@ class _ScanFoodState extends State<ScanFood> {
                     Column(
                       children: [
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(
-                              15), // Set the border radius here
+                          borderRadius: BorderRadius.circular(15),
                           child: Image.file(
                             _image!,
-                            height: screenHeight * 0.2, // Dynamic height
-                            width: screenWidth * 0.5, // Dynamic width
+                            height: screenHeight * 0.2,
+                            width: screenWidth * 0.5,
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -149,14 +155,14 @@ class _ScanFoodState extends State<ScanFood> {
                     'Recognized Food: \n $_result',
                     style: TextStyle(
                         fontSize: screenHeight * 0.025,
-                        color: BlackText(context)), // Dynamic font size
+                        color: BlackText(context)),
                     textAlign: TextAlign.center,
                   ),
                   Divider(color: Colors.purple, thickness: 1),
                   SizedBox(height: screenHeight * 0.02),
                   ElevatedButton.icon(
                     onPressed: _pickImage,
-                    icon: Icon(Icons.camera_alt,color:Colors.white,),
+                    icon: Icon(Icons.camera_alt, color: Colors.white),
                     label: Text(
                       'Scan Food',
                       style: TextStyle(fontSize: 18, color: Colors.white),

@@ -8,6 +8,7 @@ import 'OpenAi.dart';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'quotemanager.dart';
+import 'result.dart';
 
 // Function to fetch food history from SharedPreferences
 Future<Map<String, String>?> getLatestFoodEntry() async {
@@ -69,6 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String currentQuote = "";
   late QuoteManager _quoteManager;
   final OpenAIService _openAIService = OpenAIService();
+
+
 
   @override
   void initState() {
