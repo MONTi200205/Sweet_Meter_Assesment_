@@ -8,6 +8,14 @@ import 'OpenAi.dart';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'quotemanager.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Add global variables here
+String? userProfileImageUrl;
+String currentUserEmail = FirebaseAuth.instance.currentUser?.email ?? '';
 
 // Function to fetch food history from SharedPreferences
 Future<Map<String, String>?> getLatestFoodEntry() async {
@@ -74,6 +82,27 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadQuotes();
+    loadUserProfile(currentUserEmail);
+  }
+
+  // Add the loadUserProfile function here within the state class
+  Future<void> loadUserProfile(String email) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(email)
+          .get();
+
+      if (userDoc.exists && userDoc.data()!.containsKey('profilePictureUrl')) {
+        if (mounted) {  // Check if widget is still mounted
+          setState(() {
+            userProfileImageUrl = userDoc.data()!['profilePictureUrl'];
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading user profile: $e');
+    }
   }
 
   Future<void> _loadQuotes() async {
@@ -146,6 +175,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
         Scaffold(
           backgroundColor: Colors.transparent,
+          // Replace only the appBar section in your code with this:
+
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(screenHeight * 0.1),
             child: Container(
@@ -157,15 +188,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
                     child: CircleAvatar(
-                      backgroundImage: AssetImage('assets/profile_image.png'),
+                      backgroundImage: userProfileImageUrl != null
+                          ? NetworkImage(userProfileImageUrl!)
+                          : AssetImage('assets/profile_image.png') as ImageProvider,
                       radius: isLandscape ? screenHeight * 0.05 : screenWidth * 0.05,
                     ),
                   ),
                   Text(
                     "SWEET METER",
                     style: TextStyle(
-                      fontFamily: 'Agbalumo', // Replace with your font
-                      fontSize: isLandscape ? screenWidth * 0.06 : screenWidth * 0.07,
+                      fontFamily: 'Agbalumo',
+                      fontSize: isLandscape ? screenHeight * 0.05 : screenWidth * 0.07,
                       fontWeight: FontWeight.bold,
                       color: Colors.purple,
                     ),
@@ -174,14 +207,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: Icon(Icons.menu, color: IconColor(context)),
                     key: _menuKey,
                     onPressed: () {
-                      // Use Builder widget to resolve context properly
                       showDialog(
                         context: context,
                         builder: (context) {
                           return Builder(
                             builder: (context) {
-                              Menu(_menuKey).showMenu(context); // Show the menu when the button is pressed
-                              return SizedBox.shrink(); // Return an empty widget as the builder
+                              // Change this line to pass the callback
+                              Menu(_menuKey, onProfileUpdated: (String url) {
+                                setState(() {
+                                  userProfileImageUrl = url;
+                                });
+                              }).showMenu(context);
+                              return SizedBox.shrink();
                             },
                           );
                         },
@@ -213,7 +250,6 @@ class _HomeScreenState extends State<HomeScreen> {
             // Shift everything down
             SizedBox(height: screenHeight * 0.05),
 
-            // Latest Measurements Card (Button)
             GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -223,6 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               child: Container(
                 width: double.infinity,
+                height: screenHeight * 0.15, // Fixed height based on screen size
                 padding: EdgeInsets.all(screenWidth * 0.05),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -242,6 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       flex: 3,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min, // Use minimal space
                         children: [
                           Text(
                             "Latest Measurements",
@@ -250,31 +288,39 @@ class _HomeScreenState extends State<HomeScreen> {
                               fontWeight: FontWeight.bold,
                               color: Colors.black54,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis, // Handles overflow
                           ),
                           SizedBox(height: screenHeight * 0.01),
-                          FutureBuilder<Map<String, String>?>(
-                            future: getLatestFoodEntry(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return CircularProgressIndicator();
-                              }
-                              if (snapshot.hasError) {
-                                return Text('Error: ${snapshot.error}');
-                              }
-                              if (snapshot.hasData &&
-                                  snapshot.data != null) {
-                                return Text(
-                                  snapshot.data!['foodName'] ?? "Unknown",
-                                  style: TextStyle(
-                                    fontSize: screenWidth * 0.07,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                );
-                              }
-                              return Text("No history available");
-                            },
+                          Expanded(
+                            child: FutureBuilder<Map<String, String>?>(
+                              future: getLatestFoodEntry(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return Center(child: CircularProgressIndicator());
+                                }
+                                if (snapshot.hasError) {
+                                  return Text(
+                                    'Error: ${snapshot.error}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  );
+                                }
+                                if (snapshot.hasData && snapshot.data != null) {
+                                  return Text(
+                                    snapshot.data!['foodName'] ?? "Unknown",
+                                    style: TextStyle(
+                                      fontSize: screenWidth * 0.07,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis, // Handles overflow
+                                  );
+                                }
+                                return Text("No history available");
+                              },
+                            ),
                           ),
                         ],
                       ),
@@ -282,47 +328,47 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       flex: 1,
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SizedBox(height: screenHeight * 0.01),
                           FutureBuilder<Map<String, String>?>(
                             future: getLatestFoodEntry(),
                             builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
                                 return CircularProgressIndicator();
                               }
                               if (snapshot.hasError) {
-                                return Text('Error: ${snapshot.error}');
+                                return Text(
+                                  'Error',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                );
                               }
-                              if (snapshot.hasData &&
-                                  snapshot.data != null) {
-                                double sugarPercentage =
-                                _extractPercentage(
-                                    snapshot.data!['sugarLevel'] ??
-                                        '0');
+                              if (snapshot.hasData && snapshot.data != null) {
+                                double sugarPercentage = _extractPercentage(
+                                    snapshot.data!['sugarLevel'] ?? '0'
+                                );
                                 return Column(
+                                  mainAxisSize: MainAxisSize.min, // Use minimal space
                                   children: [
                                     Text(
                                       "$sugarPercentage%",
                                       style: TextStyle(
                                         fontSize: screenWidth * 0.05,
                                         fontWeight: FontWeight.bold,
-                                        color: _getColorForPercentage(
-                                            sugarPercentage),
+                                        color: _getColorForPercentage(sugarPercentage),
                                       ),
+                                      maxLines: 1,
                                     ),
-                                    SizedBox(
-                                        height: screenHeight * 0.005),
+                                    SizedBox(height: screenHeight * 0.005),
                                     Icon(
                                       Icons.circle,
-                                      color: _getColorForPercentage(
-                                          sugarPercentage),
+                                      color: _getColorForPercentage(sugarPercentage),
                                       size: screenWidth * 0.12,
                                     ),
                                   ],
                                 );
                               }
-                              return Text("No sugar level available");
+                              return Text("No data");
                             },
                           ),
                         ],
@@ -437,6 +483,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   SizedBox(height: screenHeight * 0.02),
 
+
                   // Latest Measurements Card
                   GestureDetector(
                     onTap: () {
@@ -447,6 +494,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                     child: Container(
                       width: double.infinity,
+                      height: screenHeight * 0.60, // Taller height for landscape mode
                       padding: EdgeInsets.all(screenWidth * 0.03),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -466,37 +514,52 @@ class _HomeScreenState extends State<HomeScreen> {
                             flex: 3,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min, // Use minimal space
                               children: [
                                 Text(
                                   "Latest Measurements",
                                   style: TextStyle(
-                                    fontSize: screenWidth * 0.03,
+                                    fontSize: screenWidth * 0.02,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black54,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis, // Handles overflow
                                 ),
                                 SizedBox(height: screenHeight * 0.01),
-                                FutureBuilder<Map<String, String>?>(
-                                  future: getLatestFoodEntry(),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
-                                      return CircularProgressIndicator();
-                                    }
-                                    if (snapshot.hasError) {
-                                      return Text('Error: ${snapshot.error}');
-                                    }
-                                    if (snapshot.hasData && snapshot.data != null) {
+                                Expanded(
+                                  child: FutureBuilder<Map<String, String>?>(
+                                    future: getLatestFoodEntry(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                        return Center(child: CircularProgressIndicator());
+                                      }
+                                      if (snapshot.hasError) {
+                                        return Text(
+                                          'Error: ${snapshot.error}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        );
+                                      }
+                                      if (snapshot.hasData && snapshot.data != null) {
+                                        return Text(
+                                          snapshot.data!['foodName'] ?? "Unknown",
+                                          style: TextStyle(
+                                            fontSize: screenWidth * 0.035,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis, // Handles overflow
+                                        );
+                                      }
                                       return Text(
-                                        snapshot.data!['foodName'] ?? "Unknown",
-                                        style: TextStyle(
-                                          fontSize: screenWidth * 0.035,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
-                                        ),
+                                        "No history available",
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       );
-                                    }
-                                    return Text("No history available");
-                                  },
+                                    },
+                                  ),
                                 ),
                               ],
                             ),
@@ -504,8 +567,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           Expanded(
                             flex: 1,
                             child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                              mainAxisSize: MainAxisSize.min, // Use minimal space
                               children: [
-                                SizedBox(height: screenHeight * 0.01),
                                 FutureBuilder<Map<String, String>?>(
                                   future: getLatestFoodEntry(),
                                   builder: (context, snapshot) {
@@ -513,12 +577,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                       return CircularProgressIndicator();
                                     }
                                     if (snapshot.hasError) {
-                                      return Text('Error: ${snapshot.error}');
+                                      return Text(
+                                        'Error',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      );
                                     }
                                     if (snapshot.hasData && snapshot.data != null) {
                                       double sugarPercentage = _extractPercentage(
                                           snapshot.data!['sugarLevel'] ?? '0');
                                       return Column(
+                                        mainAxisSize: MainAxisSize.min, // Use minimal space
                                         children: [
                                           Text(
                                             "$sugarPercentage%",
@@ -527,6 +596,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                               fontWeight: FontWeight.bold,
                                               color: _getColorForPercentage(sugarPercentage),
                                             ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                           SizedBox(height: screenHeight * 0.005),
                                           Icon(
@@ -537,7 +608,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ],
                                       );
                                     }
-                                    return Text("No sugar level available");
+                                    return Text(
+                                      "No data",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    );
                                   },
                                 ),
                               ],
