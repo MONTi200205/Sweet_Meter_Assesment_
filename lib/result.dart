@@ -59,7 +59,7 @@ class _ResultState extends State<Result> {
       final dataMapString = prefs.getString(userFoodDataKey);
       final Map<String, dynamic> dataMap = dataMapString != null ? json.decode(dataMapString) : {};
 
-      // Retrieve or initialize the user’s data list from local storage or Firestore
+      // Retrieve or initialize the user's data list from local storage or Firestore
       final List<dynamic> userList = dataMap[email] ?? userDataMap[email] ?? [];
       final List<FoodSugarEntry> userEntries = userList
           .map((e) => FoodSugarEntry.fromMap(e as Map<String, dynamic>))
@@ -110,7 +110,10 @@ class _ResultState extends State<Result> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     final user = FirebaseAuth.instance.currentUser;
+
     return Stack(
       children: [
         // Background Color
@@ -137,7 +140,7 @@ class _ResultState extends State<Result> {
         ),
 
         Scaffold(
-          backgroundColor: Background(context),
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             leading: IconButton(
               icon: Icon(Icons.arrow_back, color: IconColor(context)),
@@ -156,50 +159,188 @@ class _ResultState extends State<Result> {
             ],
             backgroundColor: Colors.transparent,
           ),
-          body: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+          body: isLandscape
+              ? _buildLandscapeLayout(context, size, user)
+              : _buildPortraitLayout(context, size, user),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPortraitLayout(BuildContext context, Size size, User? user) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: size.width * 0.05),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Text(
+            'Results',
+            style: TextStyle(fontSize: size.width * 0.06, color: Colors.purple),
+          ),
+          Divider(color: Colors.purple, thickness: 1),
+          SizedBox(height: size.height * 0.1),
+          Text(
+            'Food: ${widget.foodName}',
+            style: TextStyle(fontSize: size.width * 0.06, color: BlackText(context)),
+          ),
+          SizedBox(height: size.height * 0.02),
+          Text(
+            'Sugar Level: \n${widget.sugarLevel}',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: size.width * 0.06, color: BlackText(context)),
+          ),
+          SizedBox(height: size.height * 0.02),
+          ElevatedButton(
+            onPressed: () {
+              // Navigate to History screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => History(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple,
+              padding: EdgeInsets.symmetric(
+                horizontal: size.width * 0.1,
+                vertical: size.height * 0.015,
+              ),
+            ),
+            child: Text(
+              'View History',
+              style: TextStyle(fontSize: size.width * 0.04, color: Colors.white),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "Logged in as: ${user?.email ?? 'Unknown'}",
+            style: TextStyle(fontSize: size.width * 0.03, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLandscapeLayout(BuildContext context, Size size, User? user) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.all(size.width * 0.03),
+        child: Column(
+          children: [
+            // Title and divider
+            Text(
+              'Results',
+              style: TextStyle(fontSize: size.width * 0.04, color: Colors.purple),
+            ),
+            Divider(color: Colors.purple, thickness: 1),
+            SizedBox(height: size.height * 0.02),
+
+            // Content in row layout
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  'Results',
-                  style: TextStyle(fontSize: 24, color: Colors.purple),
+                // Left side - Food info
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.all(size.width * 0.02),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Food:',
+                          style: TextStyle(
+                            fontSize: size.width * 0.03,
+                            color: BlackText(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: size.height * 0.01),
+                        Text(
+                          widget.foodName,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: size.width * 0.04,
+                            color: BlackText(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                Divider(color: Colors.purple, thickness: 1),
-                SizedBox(height: 100),
-                Text(
-                  'Food: ${widget.foodName}',
-                  style: TextStyle(fontSize: 24, color: BlackText(context)),
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Sugar Level: \n${widget.sugarLevel}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 24, color: BlackText(context)),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    // Navigate to History screen
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => History(),
-                      ),
-                    );
-                  },
-                  child: Text('View History'),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  "Logged in as: ${user?.email ?? 'Unknown'}",
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+
+                SizedBox(width: size.width * 0.03),
+
+                // Right side - Sugar level
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.all(size.width * 0.02),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Sugar Level:',
+                          style: TextStyle(
+                            fontSize: size.width * 0.03,
+                            color: BlackText(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: size.height * 0.01),
+                        Text(
+                          widget.sugarLevel,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: size.width * 0.04,
+                            color: BlackText(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
+
+            SizedBox(height: size.height * 0.05),
+
+            // Button and user info
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => History()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                padding: EdgeInsets.symmetric(
+                  horizontal: size.width * 0.05,
+                  vertical: size.height * 0.02,
+                ),
+              ),
+              child: Text(
+                'View History',
+                style: TextStyle(fontSize: size.width * 0.025, color: Colors.white),
+              ),
+            ),
+            SizedBox(height: size.height * 0.02),
+            Text(
+              "Logged in as: ${user?.email ?? 'Unknown'}",
+              style: TextStyle(fontSize: size.width * 0.02, color: Colors.grey),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

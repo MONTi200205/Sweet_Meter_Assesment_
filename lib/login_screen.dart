@@ -3,6 +3,99 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart';
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
+Future<void> signInWithGoogle(BuildContext context) async {
+  try {
+    // Initialize GoogleSignIn with web support
+    final GoogleSignIn googleSignIn = GoogleSignIn();
+
+    // Trigger the authentication flow
+    final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+    // If user cancels the sign-in process
+    if (googleUser == null) {
+      return;
+    }
+
+    // Obtain the auth details from the request
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+    // Create a new credential
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    // Sign in to Firebase with the Google credential
+    final UserCredential userCredential =
+    await FirebaseAuth.instance.signInWithCredential(credential);
+
+    // Navigate to home screen after successful login
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomeScreen()),
+    );
+
+    // Optional: Get additional user data
+    print("User data: ${userCredential.user?.displayName}, ${userCredential.user?.email}");
+
+  } on FirebaseAuthException catch (e) {
+    // Handle Firebase Auth errors
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Authentication failed: ${e.message}')),
+    );
+  } catch (e) {
+    // Handle other errors
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error occurred: $e')),
+    );
+  }
+}
+// Keep only ONE version of this function
+Future<void> signInWithFacebook(BuildContext context) async {
+  try {
+    // Trigger the sign-in flow
+    final LoginResult result = await FacebookAuth.instance.login(
+      permissions: ['email', 'public_profile'],
+    );
+
+    if (result.status == LoginStatus.success) {
+      // Create a credential from the access token
+      final OAuthCredential credential = FacebookAuthProvider.credential(
+        result.accessToken!.tokenString, // Changed from token to tokenString
+      );
+
+      // Sign in to Firebase with the Facebook credential
+      final UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      // You now have a User object in userCredential.user
+      // You can navigate to your home screen or do something else
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomeScreen()),
+      );
+    } else {
+      // Handle login failure
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Facebook login failed: ${result.message}')),
+      );
+    }
+  } on FirebaseAuthException catch (e) {
+    // Handle Firebase Auth errors
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Authentication failed: ${e.message}')),
+    );
+  } catch (e) {
+    // Handle other errors
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error occurred: $e')),
+    );
+  }
+}
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -382,7 +475,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: size.height * 0.05,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    // Handle Facebook login
+                    signInWithFacebook(context);
                   },
                   icon: const Icon(Icons.facebook, color: Colors.white),
                   label: const Text(
@@ -394,21 +487,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              // Apple Button
+              // Google Button (replaced Apple)
               SizedBox(
                 width: size.width * 0.38,
                 height: size.height * 0.05,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    // Handle Apple ID login
+                    signInWithGoogle(context);
                   },
-                  icon: const Icon(Icons.apple, color: Colors.white),
+                  icon: const Icon(Icons.g_mobiledata, color: Colors.white),
                   label: const Text(
-                    "Apple",
+                    "Google",
                     style: TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
+                    backgroundColor: Colors.red,
                   ),
                 ),
               ),
@@ -446,7 +539,7 @@ class _LoginScreenState extends State<LoginScreen> {
               height: size.height * 0.06,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // Handle Facebook login
+                  signInWithFacebook(context);
                 },
                 icon: const Icon(Icons.facebook, color: Colors.white, size: 16),
                 label: Text(
@@ -463,24 +556,21 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: size.height * 0.008),
 
-            // Apple Button
+            // Google Button (replaced Apple)
             SizedBox(
-              width: double.infinity,
-              height: size.height * 0.06,
+              width: size.width * 0.38,
+              height: size.height * 0.05,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // Handle Apple ID login
+                 signInWithGoogle(context);
                 },
-                icon: const Icon(Icons.apple, color: Colors.white, size: 16),
-                label: Text(
-                  "Apple",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: size.width * 0.014,
-                  ),
+                icon: const Icon(Icons.g_mobiledata, color: Colors.white),
+                label: const Text(
+                  "Google",
+                  style: TextStyle(color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
+                  backgroundColor: Colors.red,
                 ),
               ),
             ),
