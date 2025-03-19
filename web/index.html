@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+  
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js"></script>
+<meta name="google-signin-client-id" content="54828209575-vg2krojth1d01anecrf4nsqc56jrg5jq.apps.googleusercontent.com" />
+
   <!--
     If you are serving your web app in a path other than the root, change the
     href value below to reflect the base path you are serving from.
@@ -33,6 +38,23 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- Add this script right before the closing </body> tag -->
+<script>
+  // Your web app's Firebase configuration
+  // Replace with your actual Firebase config
+  const firebaseConfig = {
+  apiKey: "AIzaSyAqBo25O0mZDQMC60S9XtpulhbduXlWIDE",
+  authDomain: "sweetmeter-6e3e3.firebaseapp.com",
+  projectId: "sweetmeter-6e3e3",
+  storageBucket: "sweetmeter-6e3e3.firebasestorage.app",
+  messagingSenderId: "685238501821",
+  appId: "1:685238501821:web:eda78e84f96f8180ad12d4",
+  measurementId: "G-26LKHP5EPJ"
+  };
+  
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+</script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

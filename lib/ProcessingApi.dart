@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:async'; // For delay
-import 'dart:convert'; // For JSON parsing
-import 'package:http/http.dart' as http;
-import 'result.dart'; // Import Result screen
+import 'dart:async';
+import 'package:openfoodfacts/openfoodfacts.dart';
+import 'result.dart';
 import 'home_screen.dart';
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 
@@ -16,87 +15,169 @@ class Processing extends StatefulWidget {
 }
 
 class _ProcessingState extends State<Processing> {
-  String? sugarLevel; // Variable to hold sugar level information
+  String? sugarLevel;
+  int retryCount = 0;
+  final int maxRetries = 2;
 
   @override
   void initState() {
     super.initState();
+    // Set up the OpenFoodFacts configuration
+    OpenFoodAPIConfiguration.userAgent = UserAgent(
+      name: 'Sweet Meter Assessment',
+    );
+
     fetchFoodData(widget.foodName);
   }
 
-  Future<void> fetchFoodData(String foodName) async {
-    final String searchApiUrl =
-        'https://world.openfoodfacts.org/cgi/search.pl?search_terms=$foodName&search_simple=1&json=1';
-
+  Future<void> fetchFoodData(String foodName, {int currentRetry = 0}) async {
     try {
-      // Step 1: Search for the product name to get the barcode
-      final searchResponse = await http.get(Uri.parse(searchApiUrl));
+      // Create parameters for the search
+      final parameters = <Parameter>[
+        SearchTerms(terms: [foodName]),
+      ];
 
-      if (searchResponse.statusCode == 200) {
-        final searchData = json.decode(searchResponse.body);
-        final List products = searchData['products'];
+      // Create the search configuration
+      final configuration = ProductSearchQueryConfiguration(
+        parametersList: parameters,
+        fields: [ProductField.ALL],
+        language: OpenFoodFactsLanguage.ENGLISH,
+        version: ProductQueryVersion.v3,
+      );
 
-        if (products.isNotEmpty) {
-          final barcode =
-              products[0]['code']; // Get the first product's barcode
+      // Search for products with parameters in the correct order
+      final searchResult = await OpenFoodAPIClient.searchProducts(
+        null, // First parameter is User? which can be null
+        configuration, // Second parameter is the query configuration
+      );
 
-          // Step 2: Use the barcode to fetch detailed product information
-          await fetchProductDetails(barcode);
+      if (searchResult.products != null && searchResult.products!.isNotEmpty) {
+        final product = searchResult.products![0];
+
+        // If we already have nutriments data from the search, use it
+        if (product.nutriments != null) {
+          processNutriments(product.nutriments!);
+        } else if (product.barcode != null) {
+          // Otherwise fetch detailed product info by barcode
+          await fetchProductDetails(product.barcode!);
         } else {
           setState(() {
-            sugarLevel = 'No products found for "$foodName".';
+            sugarLevel = 'No product information available.';
           });
+          navigateToResult();
         }
       } else {
+        // No products found but request was successful
         setState(() {
-          sugarLevel =
-              'Failed to search for products. Error: ${searchResponse.statusCode}';
+          sugarLevel = 'No products found for "$foodName".';
         });
+        navigateToResult();
       }
     } catch (e) {
+      // If we haven't hit our retry limit yet, try again
+      if (currentRetry < maxRetries) {
+        // Wait a bit before retrying to avoid potential rate limiting
+        await Future.delayed(Duration(seconds: 1));
+        return fetchFoodData(foodName, currentRetry: currentRetry + 1);
+      }
+
+      // If we've exhausted our retries or it's a permanent error, show error
       setState(() {
         sugarLevel = 'An error occurred during the search: $e';
       });
+      navigateToResult();
     }
   }
 
-  Future<void> fetchProductDetails(String barcode) async {
-    final String productApiUrl =
-        'https://world.openfoodfacts.org/api/v0/product/$barcode.json';
-
+  Future<void> fetchProductDetails(String barcode, {int currentRetry = 0}) async {
     try {
-      final productResponse = await http.get(Uri.parse(productApiUrl));
+      // Get product by barcode
+      final productQueryConfiguration = ProductQueryConfiguration(
+        barcode,
+        version: ProductQueryVersion.v3,
+        language: OpenFoodFactsLanguage.ENGLISH,
+        fields: [ProductField.NUTRIMENTS],
+      );
 
-      if (productResponse.statusCode == 200) {
-        final productData = json.decode(productResponse.body);
+      // Call with correct parameter order
+      final productResult = await OpenFoodAPIClient.getProductV3(
+        productQueryConfiguration,
+      );
 
-        if (productData['status'] == 1) {
-          final product = productData['product'];
-          final sugarContent = product['nutriments']?['sugars_100g'];
-
-          setState(() {
-            sugarLevel = sugarContent != null
-                ? sugarContent.toString() + 'g per 100g'
-                : 'No sugar information available.';
-          });
-        } else {
-          setState(() {
-            sugarLevel = 'Product not found in the database.';
-          });
-        }
+      if (productResult.product != null && productResult.product!.nutriments != null) {
+        processNutriments(productResult.product!.nutriments!);
       } else {
         setState(() {
-          sugarLevel =
-              'Failed to fetch product details. Error: ${productResponse.statusCode}';
+          sugarLevel = 'No sugar information available for this product.';
         });
+        navigateToResult();
       }
     } catch (e) {
+      // If we haven't hit our retry limit yet, try again
+      if (currentRetry < maxRetries) {
+        // Wait a bit before retrying
+        await Future.delayed(Duration(seconds: 1));
+        return fetchProductDetails(barcode, currentRetry: currentRetry + 1);
+      }
+
       setState(() {
         sugarLevel = 'An error occurred while fetching product details: $e';
       });
+      navigateToResult();
     }
+  }
 
-    // Navigate to Result screen after fetching product details
+  void processNutriments(Nutriments nutriments) {
+    try {
+      // Try to get sugar content using various approaches
+      double? sugarsValue;
+
+      // Try to get sugars using the standard method
+      try {
+        sugarsValue = nutriments.getValue(Nutrient.sugars, PerSize.oneHundredGrams);
+      } catch (e) {
+        // If that fails, try to access the value directly from the map
+        final Map<String, dynamic>? nutrientsMap = nutriments.toJson();
+        if (nutrientsMap != null) {
+          // Try various potential key names for sugar content
+          final possibleSugarKeys = [
+            'sugars_100g',
+            'sugars',
+            'sugar_100g',
+            'sugar'
+          ];
+
+          for (final key in possibleSugarKeys) {
+            if (nutrientsMap.containsKey(key) && nutrientsMap[key] != null) {
+              final value = nutrientsMap[key];
+              if (value is num) {
+                sugarsValue = value.toDouble();
+                break;
+              } else if (value is String) {
+                sugarsValue = double.tryParse(value);
+                if (sugarsValue != null) break;
+              }
+            }
+          }
+        }
+      }
+
+      setState(() {
+        if (sugarsValue != null) {
+          sugarLevel = '${sugarsValue.toString()}g per 100g';
+        } else {
+          sugarLevel = 'No sugar information available.';
+        }
+      });
+    } catch (e) {
+      setState(() {
+        sugarLevel = 'Error processing nutriment data: $e';
+      });
+    }
+    navigateToResult();
+  }
+
+  void navigateToResult() {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -126,10 +207,10 @@ class _ProcessingState extends State<Processing> {
           decoration: BoxDecoration(
             image: DecorationImage(
               image: AssetImage("assets/Background.png"),
-              fit: BoxFit.cover, // Cover the entire screen
+              fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.3), // Adjust the overlay darkness
-                BlendMode.darken, // Blends with background color
+                Colors.black.withOpacity(0.3),
+                BlendMode.darken,
               ),
             ),
           ),
@@ -158,21 +239,21 @@ class _ProcessingState extends State<Processing> {
           body: Center(
             child: sugarLevel == null
                 ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(color: Colors.purple),
-                      SizedBox(height: 20),
-                      Text(
-                        'Processing ${widget.foodName}...',
-                        style: TextStyle(fontSize: 24, color: BlackText(context)),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  )
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(color: Colors.purple),
+                SizedBox(height: 20),
+                Text(
+                  'Processing ${widget.foodName}...',
+                  style: TextStyle(fontSize: 24, color: BlackText(context)),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            )
                 : Text(
-                    'Connection Error !',
-                    style: TextStyle(fontSize: 24, color: Colors.white),
-                  ),
+              'Connection Error !',
+              style: TextStyle(fontSize: 24, color: Colors.white),
+            ),
           ),
         ),
       ],

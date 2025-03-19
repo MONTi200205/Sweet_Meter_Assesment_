@@ -88,13 +88,12 @@ class _HomeScreenState extends State<HomeScreen> {
   // Add the loadUserProfile function here within the state class
   Future<void> loadUserProfile(String email) async {
     try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(email)
-          .get();
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(email).get();
 
       if (userDoc.exists && userDoc.data()!.containsKey('profilePictureUrl')) {
-        if (mounted) {  // Check if widget is still mounted
+        if (mounted) {
+          // Check if widget is still mounted
           setState(() {
             userProfileImageUrl = userDoc.data()!['profilePictureUrl'];
           });
@@ -146,7 +145,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final size = MediaQuery.of(context).size;
     final screenWidth = size.width;
     final screenHeight = size.height;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Stack(
       children: [
@@ -186,19 +186,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   SizedBox(height: screenHeight * 0.4),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
                     child: CircleAvatar(
                       backgroundImage: userProfileImageUrl != null
                           ? NetworkImage(userProfileImageUrl!)
-                          : AssetImage('assets/profile_image.png') as ImageProvider,
-                      radius: isLandscape ? screenHeight * 0.05 : screenWidth * 0.05,
+                          : AssetImage('assets/profile_image.png')
+                              as ImageProvider,
+                      radius: isLandscape
+                          ? screenHeight * 0.05
+                          : screenWidth * 0.05,
                     ),
                   ),
                   Text(
                     "SWEET METER",
                     style: TextStyle(
                       fontFamily: 'Agbalumo',
-                      fontSize: isLandscape ? screenHeight * 0.05 : screenWidth * 0.07,
+                      fontSize: isLandscape
+                          ? screenHeight * 0.05
+                          : screenWidth * 0.07,
                       fontWeight: FontWeight.bold,
                       color: Colors.purple,
                     ),
@@ -259,7 +265,8 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               child: Container(
                 width: double.infinity,
-                height: screenHeight * 0.15, // Fixed height based on screen size
+                height:
+                    screenHeight * 0.15, // Fixed height based on screen size
                 padding: EdgeInsets.all(screenWidth * 0.05),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -296,8 +303,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: FutureBuilder<Map<String, String>?>(
                               future: getLatestFoodEntry(),
                               builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return Center(child: CircularProgressIndicator());
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return Center(
+                                      child: CircularProgressIndicator());
                                 }
                                 if (snapshot.hasError) {
                                   return Text(
@@ -315,7 +324,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                       color: Colors.black,
                                     ),
                                     maxLines: 1,
-                                    overflow: TextOverflow.ellipsis, // Handles overflow
+                                    overflow: TextOverflow
+                                        .ellipsis, // Handles overflow
                                   );
                                 }
                                 return Text("No history available");
@@ -333,7 +343,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           FutureBuilder<Map<String, String>?>(
                             future: getLatestFoodEntry(),
                             builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
                                 return CircularProgressIndicator();
                               }
                               if (snapshot.hasError) {
@@ -345,24 +356,26 @@ class _HomeScreenState extends State<HomeScreen> {
                               }
                               if (snapshot.hasData && snapshot.data != null) {
                                 double sugarPercentage = _extractPercentage(
-                                    snapshot.data!['sugarLevel'] ?? '0'
-                                );
+                                    snapshot.data!['sugarLevel'] ?? '0');
                                 return Column(
-                                  mainAxisSize: MainAxisSize.min, // Use minimal space
+                                  mainAxisSize:
+                                      MainAxisSize.min, // Use minimal space
                                   children: [
                                     Text(
                                       "$sugarPercentage%",
                                       style: TextStyle(
                                         fontSize: screenWidth * 0.05,
                                         fontWeight: FontWeight.bold,
-                                        color: _getColorForPercentage(sugarPercentage),
+                                        color: _getColorForPercentage(
+                                            sugarPercentage),
                                       ),
                                       maxLines: 1,
                                     ),
                                     SizedBox(height: screenHeight * 0.005),
                                     Icon(
                                       Icons.circle,
-                                      color: _getColorForPercentage(sugarPercentage),
+                                      color: _getColorForPercentage(
+                                          sugarPercentage),
                                       size: screenWidth * 0.12,
                                     ),
                                   ],
@@ -388,8 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Navigate to ScanOrTypeScreen
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) => ScanOrTypeScreen()),
+                    MaterialPageRoute(builder: (context) => ScanOrTypeScreen()),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -426,14 +438,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 Builder(
                   builder: (context) => IconButton(
-                    icon: Icon(Icons.refresh_rounded,
-                        color: IconColor(context)),
+                    icon:
+                        Icon(Icons.refresh_rounded, color: IconColor(context)),
                     onPressed: () {
                       _clearSavedQuotes();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content:
-                            Text("Quotes cleared successfully!")),
+                        SnackBar(content: Text("Quotes cleared successfully!")),
                       );
                     },
                   ),
@@ -483,7 +493,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   SizedBox(height: screenHeight * 0.02),
 
-
                   // Latest Measurements Card
                   GestureDetector(
                     onTap: () {
@@ -494,7 +503,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                     child: Container(
                       width: double.infinity,
-                      height: screenHeight * 0.60, // Taller height for landscape mode
+                      height: screenHeight *
+                          0.60, // Taller height for landscape mode
                       padding: EdgeInsets.all(screenWidth * 0.03),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -514,7 +524,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             flex: 3,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min, // Use minimal space
+                              mainAxisSize:
+                                  MainAxisSize.min, // Use minimal space
                               children: [
                                 Text(
                                   "Latest Measurements",
@@ -524,15 +535,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                     color: Colors.black54,
                                   ),
                                   maxLines: 1,
-                                  overflow: TextOverflow.ellipsis, // Handles overflow
+                                  overflow:
+                                      TextOverflow.ellipsis, // Handles overflow
                                 ),
                                 SizedBox(height: screenHeight * 0.01),
                                 Expanded(
                                   child: FutureBuilder<Map<String, String>?>(
                                     future: getLatestFoodEntry(),
                                     builder: (context, snapshot) {
-                                      if (snapshot.connectionState == ConnectionState.waiting) {
-                                        return Center(child: CircularProgressIndicator());
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return Center(
+                                            child: CircularProgressIndicator());
                                       }
                                       if (snapshot.hasError) {
                                         return Text(
@@ -541,16 +555,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                           overflow: TextOverflow.ellipsis,
                                         );
                                       }
-                                      if (snapshot.hasData && snapshot.data != null) {
+                                      if (snapshot.hasData &&
+                                          snapshot.data != null) {
                                         return Text(
-                                          snapshot.data!['foodName'] ?? "Unknown",
+                                          snapshot.data!['foodName'] ??
+                                              "Unknown",
                                           style: TextStyle(
                                             fontSize: screenWidth * 0.035,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.black,
                                           ),
                                           maxLines: 1,
-                                          overflow: TextOverflow.ellipsis, // Handles overflow
+                                          overflow: TextOverflow
+                                              .ellipsis, // Handles overflow
                                         );
                                       }
                                       return Text(
@@ -567,13 +584,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           Expanded(
                             flex: 1,
                             child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                              mainAxisSize: MainAxisSize.min, // Use minimal space
+                              mainAxisAlignment: MainAxisAlignment
+                                  .center, // Center content vertically
+                              mainAxisSize:
+                                  MainAxisSize.min, // Use minimal space
                               children: [
                                 FutureBuilder<Map<String, String>?>(
                                   future: getLatestFoodEntry(),
                                   builder: (context, snapshot) {
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
                                       return CircularProgressIndicator();
                                     }
                                     if (snapshot.hasError) {
@@ -583,26 +603,33 @@ class _HomeScreenState extends State<HomeScreen> {
                                         overflow: TextOverflow.ellipsis,
                                       );
                                     }
-                                    if (snapshot.hasData && snapshot.data != null) {
-                                      double sugarPercentage = _extractPercentage(
-                                          snapshot.data!['sugarLevel'] ?? '0');
+                                    if (snapshot.hasData &&
+                                        snapshot.data != null) {
+                                      double sugarPercentage =
+                                          _extractPercentage(
+                                              snapshot.data!['sugarLevel'] ??
+                                                  '0');
                                       return Column(
-                                        mainAxisSize: MainAxisSize.min, // Use minimal space
+                                        mainAxisSize: MainAxisSize
+                                            .min, // Use minimal space
                                         children: [
                                           Text(
                                             "$sugarPercentage%",
                                             style: TextStyle(
                                               fontSize: screenWidth * 0.03,
                                               fontWeight: FontWeight.bold,
-                                              color: _getColorForPercentage(sugarPercentage),
+                                              color: _getColorForPercentage(
+                                                  sugarPercentage),
                                             ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
-                                          SizedBox(height: screenHeight * 0.005),
+                                          SizedBox(
+                                              height: screenHeight * 0.005),
                                           Icon(
                                             Icons.circle,
-                                            color: _getColorForPercentage(sugarPercentage),
+                                            color: _getColorForPercentage(
+                                                sugarPercentage),
                                             size: screenWidth * 0.06,
                                           ),
                                         ],
@@ -631,7 +658,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => ScanOrTypeScreen()),
+                          MaterialPageRoute(
+                              builder: (context) => ScanOrTypeScreen()),
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -681,11 +709,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           IconButton(
-                            icon: Icon(Icons.refresh_rounded, color: Colors.white),
+                            icon: Icon(Icons.refresh_rounded,
+                                color: Colors.white),
                             onPressed: () {
                               _clearSavedQuotes();
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("Quotes cleared successfully!")),
+                                SnackBar(
+                                    content:
+                                        Text("Quotes cleared successfully!")),
                               );
                             },
                             iconSize: screenWidth * 0.03,
