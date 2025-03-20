@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'TypeFood.dart';
 import 'ScanFood.dart';
+import 'BarcodeScanner.dart'; // Import the new BarcodeScanner file
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 
 class ScanOrTypeScreen extends StatefulWidget {
@@ -9,7 +10,8 @@ class ScanOrTypeScreen extends StatefulWidget {
 }
 
 class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
-  bool isTypeSelected = true;
+  // 0 = Type, 1 = Scan, 2 = Barcode
+  int selectedOption = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -32,10 +34,10 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
           decoration: BoxDecoration(
             image: DecorationImage(
               image: AssetImage("assets/Background.png"),
-              fit: BoxFit.cover, // Cover the entire screen
+              fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.3), // Adjust the overlay darkness
-                BlendMode.darken, // Blends with background color
+                Colors.black.withOpacity(0.3),
+                BlendMode.darken,
               ),
             ),
           ),
@@ -46,7 +48,7 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             leading: IconButton(
-              icon: Icon(Icons.arrow_back, color:IconColor(context)),
+              icon: Icon(Icons.arrow_back, color: IconColor(context)),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -56,7 +58,7 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  "You can Either \n Scan or Type",
+                  "You can Either \n Type, Scan or Use Barcode",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 20,
@@ -68,7 +70,11 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
                 Divider(color: Colors.purple, thickness: 1),
                 SizedBox(height: screenHeight * 0.04),
                 ToggleButtons(
-                  isSelected: [isTypeSelected, !isTypeSelected],
+                  isSelected: [
+                    selectedOption == 0,
+                    selectedOption == 1,
+                    selectedOption == 2
+                  ],
                   borderRadius: BorderRadius.circular(30),
                   selectedBorderColor: Colors.purple,
                   fillColor: Colors.purple,
@@ -77,31 +83,39 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
                   borderColor: Colors.purple,
                   onPressed: (int index) {
                     setState(() {
-                      isTypeSelected = index == 0;
+                      selectedOption = index;
                     });
                   },
                   constraints: BoxConstraints(
                     minHeight: screenHeight * 0.07,
-                    minWidth: screenWidth * 0.4,
+                    minWidth: screenWidth * 0.27,
                   ),
                   children: const [
                     Text("Type"),
                     Text("Scan"),
+                    Text("Barcode"),
                   ],
                 ),
                 Spacer(),
                 ElevatedButton(
                   onPressed: () {
-                    if (isTypeSelected) {
-                      // Navigate to Screen 1
+                    if (selectedOption == 0) {
+                      // Navigate to Type Food screen
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => TypeFood()),
                       );
-                    } else if (!isTypeSelected) {
+                    } else if (selectedOption == 1) {
+                      // Navigate to Scan Food screen
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => ScanFood()),
+                      );
+                    } else if (selectedOption == 2) {
+                      // Navigate to Barcode Scanner screen
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => BarcodeScanner()),
                       );
                     }
                   },
@@ -117,7 +131,7 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
                   ),
                   child: const Text(
                     "Next",
-                    style: TextStyle(fontSize: 16,color:Colors.white),
+                    style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
                 ),
                 SizedBox(height: screenHeight * 0.04),

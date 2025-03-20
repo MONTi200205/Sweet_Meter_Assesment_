@@ -12,6 +12,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:battery_plus/battery_plus.dart';
+import 'dart:async';
 
 // Add global variables here
 String? userProfileImageUrl;
@@ -78,14 +80,17 @@ class _HomeScreenState extends State<HomeScreen> {
   late QuoteManager _quoteManager;
   final OpenAIService _openAIService = OpenAIService();
 
+
   @override
   void initState() {
     super.initState();
+    _initPowerSavingDetection();
     _loadQuotes();
     loadUserProfile(currentUserEmail);
   }
-
-  // Add the loadUserProfile function here within the state class
+  final Battery _battery = Battery();//see if its power save
+  StreamSubscription<BatteryState>? _batteryStateSubscription;
+  //  loadUserProfile function here within the state class
   Future<void> loadUserProfile(String email) async {
     try {
       final userDoc =
@@ -106,10 +111,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadQuotes() async {
     _quoteManager = QuoteManager(onQuoteChanged: (quote) {
-      setState(() {
-        currentQuote = quote;
-      });
+      if (mounted) {
+        setState(() {
+          currentQuote = quote;
+        });
+      }
     });
+
+    // Check power saving mode first
+    bool isInPowerSaveMode = await _battery.isInBatterySaveMode;
+    if (isInPowerSaveMode) {
+      _quoteManager.pause();
+      return;
+    }
 
     List<String> savedQuotes = await _openAIService.getSavedQuotes();
     if (savedQuotes.isEmpty) {
@@ -133,7 +147,31 @@ class _HomeScreenState extends State<HomeScreen> {
       _quoteManager.loadQuotes(newQuotes);
     });
   }
+  void _initPowerSavingDetection() async {
+    // Check initial power saving state
+    bool isInPowerSaveMode = await _battery.isInBatterySaveMode;
+    _handlePowerSavingModeChanged(isInPowerSaveMode);
 
+    // Listen for changes in power saving mode
+    _batteryStateSubscription = _battery.onBatteryStateChanged.listen((_) async {
+      bool isInPowerSaveMode = await _battery.isInBatterySaveMode;
+      _handlePowerSavingModeChanged(isInPowerSaveMode);
+    });
+  }
+
+  void _handlePowerSavingModeChanged(bool isInPowerSaveMode) {
+    if (isInPowerSaveMode) {
+      // Device is in power saving mode, pause quote manager
+      if (_quoteManager != null) {
+        _quoteManager.pause();
+      }
+    } else {
+      // Device exited power saving mode, resume quote manager
+      if (_quoteManager != null) {
+        _quoteManager.resume();
+      }
+    }
+  }
   @override
   void dispose() {
     _quoteManager.stop();
@@ -147,6 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final screenHeight = size.height;
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
+
 
     return Stack(
       children: [
@@ -175,8 +214,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
         Scaffold(
           backgroundColor: Colors.transparent,
-          // Replace only the appBar section in your code with this:
-
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(screenHeight * 0.1),
             child: Container(

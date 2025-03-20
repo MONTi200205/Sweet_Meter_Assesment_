@@ -146,7 +146,7 @@ class _ScanFoodState extends State<ScanFood> {
                       ],
                     ),
                   Text(
-                    'Recognized Food: \n $_result',
+                    'Recognized Food: \n $_result\n\n(Warning : Scanning Ai can make mistakes)',
                     style: TextStyle(
                         fontSize: screenHeight * 0.025,
                         color: BlackText(context)), // Dynamic font size
