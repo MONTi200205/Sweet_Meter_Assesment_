@@ -4,12 +4,14 @@ import 'login_screen.dart';
 import 'firebase_options.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:sweet_meter_assesment/utils/scaling_utils.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await initializeScaling();
   // Initialize Facebook Auth for web
   if (kIsWeb) {
     await FacebookAuth.instance.webAndDesktopInitialize(

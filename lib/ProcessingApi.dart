@@ -26,6 +26,9 @@ class _ProcessingState extends State<Processing> {
   String? sugarLevel;
   int retryCount = 0;
   final int maxRetries = 2;
+  bool isLoading = true;
+  List<Product>? searchResults;
+  String? errorMessage;
 
   @override
   void initState() {
@@ -43,8 +46,8 @@ class _ProcessingState extends State<Processing> {
       // Process the food image
       processImageData(widget.imagePath!);
     } else {
-      // Standard search by food name
-      fetchFoodData(widget.foodName);
+      // Standard search by food name - now gets results for selection
+      fetchFoodSearchResults(widget.foodName);
     }
   }
 
@@ -58,20 +61,21 @@ class _ProcessingState extends State<Processing> {
 
       // For demonstration purposes, we'll just conduct a search based on the food name
       // In a real implementation, you would use image recognition to identify the food
-      fetchFoodData(widget.foodName);
+      fetchFoodSearchResults(widget.foodName);
 
       // Alternative approach: If you have a barcode detection library that can
       // extract barcodes from images, you could implement that here and then call:
       // fetchProductDetails(detectedBarcode);
     } catch (e) {
       setState(() {
-        sugarLevel = 'Error processing image: $e';
+        errorMessage = 'Error processing image: $e';
+        isLoading = false;
       });
-      navigateToResult();
     }
   }
 
-  Future<void> fetchFoodData(String foodName, {int currentRetry = 0}) async {
+  // New method to fetch search results for selection
+  Future<void> fetchFoodSearchResults(String foodName, {int currentRetry = 0}) async {
     try {
       // Create parameters for the search
       final parameters = <Parameter>[
@@ -92,41 +96,47 @@ class _ProcessingState extends State<Processing> {
         configuration, // Second parameter is the query configuration
       );
 
-      if (searchResult.products != null && searchResult.products!.isNotEmpty) {
-        final product = searchResult.products![0];
-
-        // If we already have nutriments data from the search, use it
-        if (product.nutriments != null) {
-          processNutriments(product.nutriments!);
-        } else if (product.barcode != null) {
-          // Otherwise fetch detailed product info by barcode
-          await fetchProductDetails(product.barcode!);
+      setState(() {
+        if (searchResult.products != null && searchResult.products!.isNotEmpty) {
+          searchResults = searchResult.products;
         } else {
-          setState(() {
-            sugarLevel = 'No product information available.';
-          });
-          navigateToResult();
+          errorMessage = 'No products found for "${widget.foodName}".';
         }
-      } else {
-        // No products found but request was successful
-        setState(() {
-          sugarLevel = 'No products found for "${widget.foodName}".';
-        });
-        navigateToResult();
-      }
+        isLoading = false;
+      });
     } catch (e) {
       // If we haven't hit our retry limit yet, try again
       if (currentRetry < maxRetries) {
         // Wait a bit before retrying to avoid potential rate limiting
         await Future.delayed(Duration(seconds: 1));
-        return fetchFoodData(foodName, currentRetry: currentRetry + 1);
+        return fetchFoodSearchResults(foodName, currentRetry: currentRetry + 1);
       }
 
       // If we've exhausted our retries or it's a permanent error, show error
       setState(() {
-        sugarLevel = 'An error occurred during the search: $e';
+        errorMessage = 'An error occurred during the search: $e';
+        isLoading = false;
       });
-      navigateToResult();
+    }
+  }
+
+  // Process a selected product (either from search results or direct barcode)
+  Future<void> processSelectedProduct(Product product) async {
+    setState(() {
+      isLoading = true;
+    });
+
+    if (product.nutriments != null) {
+      processNutriments(product.nutriments!);
+    } else if (product.barcode != null) {
+      // If we don't have nutriment data, fetch by barcode
+      await fetchProductDetails(product.barcode!);
+    } else {
+      setState(() {
+        sugarLevel = 'No product information available.';
+        isLoading = false;
+      });
+      navigateToResult(product.productName ?? widget.foodName);
     }
   }
 
@@ -150,8 +160,9 @@ class _ProcessingState extends State<Processing> {
       } else {
         setState(() {
           sugarLevel = 'No sugar information available for this product.';
+          isLoading = false;
         });
-        navigateToResult();
+        navigateToResult(widget.foodName);
       }
     } catch (e) {
       // If we haven't hit our retry limit yet, try again
@@ -163,8 +174,9 @@ class _ProcessingState extends State<Processing> {
 
       setState(() {
         sugarLevel = 'An error occurred while fetching product details: $e';
+        isLoading = false;
       });
-      navigateToResult();
+      navigateToResult(widget.foodName);
     }
   }
 
@@ -209,26 +221,17 @@ class _ProcessingState extends State<Processing> {
         } else {
           sugarLevel = 'No sugar information available.';
         }
+        isLoading = false;
       });
     } catch (e) {
       setState(() {
         sugarLevel = 'Error processing nutriment data: $e';
+        isLoading = false;
       });
     }
-    navigateToResult();
   }
 
-  void navigateToResult() {
-    String displayName;
-
-    if (widget.isBarcode) {
-      displayName = "Product with barcode: ${widget.foodName}";
-    } else if (widget.isImage) {
-      displayName = "Analyzed food image: ${widget.foodName}";
-    } else {
-      displayName = widget.foodName;
-    }
-
+  void navigateToResult(String displayName) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -268,7 +271,7 @@ class _ProcessingState extends State<Processing> {
         ),
 
         Scaffold(
-          backgroundColor: Background(context),
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             leading: IconButton(
               icon: Icon(Icons.arrow_back, color: IconColor(context)),
@@ -287,31 +290,118 @@ class _ProcessingState extends State<Processing> {
             ],
             backgroundColor: Colors.transparent,
           ),
-          body: Center(
-            child: sugarLevel == null
-                ? Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: Colors.purple),
-                SizedBox(height: 20),
-                Text(
-                  widget.isBarcode
-                      ? 'Processing barcode ${widget.foodName}...'
-                      : widget.isImage
-                      ? 'Analyzing food image...'
-                      : 'Processing ${widget.foodName}...',
-                  style: TextStyle(fontSize: 24, color: BlackText(context)),
-                  textAlign: TextAlign.center,
+          body: isLoading
+              ? _buildLoadingView()
+              : searchResults != null && !widget.isBarcode && !widget.isImage
+              ? _buildSearchResultsList()
+              : _buildErrorView(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: Colors.purple),
+          SizedBox(height: 20),
+          Text(
+            widget.isBarcode
+                ? 'Processing barcode ${widget.foodName}...'
+                : widget.isImage
+                ? 'Analyzing food image...'
+                : 'Searching for ${widget.foodName}...',
+            style: TextStyle(fontSize: 24, color: BlackText(context)),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsList() {
+    if (searchResults == null || searchResults!.isEmpty) {
+      return Center(
+        child: Text(
+          errorMessage ?? 'No results found',
+          style: TextStyle(fontSize: 18, color: BlackText(context)),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'Select a product:',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: BlackText(context)),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: searchResults!.length,
+            itemBuilder: (context, index) {
+              final product = searchResults![index];
+              return Card(
+                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: ListTile(
+                  leading: product.imageFrontUrl != null && product.imageFrontUrl!.isNotEmpty
+                      ? Image.network(
+                    product.imageFrontUrl!,
+                    width: 50,
+                    height: 50,
+                    errorBuilder: (context, error, stackTrace) =>
+                        Icon(Icons.image_not_supported, size: 40),
+                  )
+                      : Icon(Icons.food_bank, size: 40),
+                  title: Text(
+                    product.productName ?? 'Unknown Product',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(product.brands ?? 'Unknown Brand'),
+                  onTap: () {
+                    // When a product is selected, process it
+                    navigateToResult(product.productName ?? widget.foodName);
+                    processSelectedProduct(product);
+                  },
                 ),
-              ],
-            )
-                : Text(
-              'Connection Error !',
-              style: TextStyle(fontSize: 24, color: Colors.white),
-            ),
+              );
+            },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildErrorView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 60, color: Colors.red),
+            SizedBox(height: 16),
+            Text(
+              errorMessage ?? 'Connection Error!',
+              style: TextStyle(fontSize: 20, color: BlackText(context)),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Go Back'),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

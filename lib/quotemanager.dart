@@ -9,6 +9,7 @@ class QuoteManager {
   final Function(String) onQuoteChanged;
   final String quotesKey = 'food_quotes';
   bool _isPaused = false; // Track power saving mode state
+  bool _isInitialized = false; // Track if quotes have been initialized
 
   QuoteManager({required this.onQuoteChanged});
 
@@ -27,6 +28,8 @@ class QuoteManager {
     if (_isPaused) {
       _isPaused = false;
       if (quotes.isNotEmpty) {
+        // Reset the index to ensure we're showing a quote
+        currentQuoteIndex = 0;
         onQuoteChanged(quotes[currentQuoteIndex]);
         _startQuoteTimer();
       } else {
@@ -37,6 +40,13 @@ class QuoteManager {
 
   void loadQuotes(List<String> newQuotes) {
     quotes = newQuotes;
+    _isInitialized = true;
+
+    // If no quotes were loaded, show a message
+    if (quotes.isEmpty) {
+      onQuoteChanged("No quotes available.");
+      return;
+    }
 
     // Check if we're in power saving mode
     if (_isPaused) {
@@ -44,21 +54,29 @@ class QuoteManager {
       return;
     }
 
-    if (quotes.isNotEmpty) {
-      onQuoteChanged(quotes[currentQuoteIndex]); // Show first quote immediately
-      _startQuoteTimer();
-    } else {
-      onQuoteChanged("No quotes available.");
+    // Make sure we have a valid index
+    if (currentQuoteIndex >= quotes.length) {
+      currentQuoteIndex = 0;
     }
+
+    // Show the current quote immediately
+    onQuoteChanged(quotes[currentQuoteIndex]);
+
+    // Start the timer for quote rotation
+    _startQuoteTimer();
   }
 
   void _startQuoteTimer() {
     // Don't start timer if in power saving mode
     if (_isPaused) return;
 
+    // Don't start if no quotes available
+    if (quotes.isEmpty) return;
+
     // Cancel existing timer before starting a new one
     _timer?.cancel();
 
+    // Use a slightly longer duration for web platform
     _timer = Timer.periodic(Duration(seconds: 10), (timer) {
       if (quotes.isNotEmpty) {
         currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
@@ -68,6 +86,14 @@ class QuoteManager {
         _timer?.cancel();
       }
     });
+  }
+
+  // Force a quote update (useful after login)
+  void forceQuoteUpdate() {
+    if (!_isPaused && quotes.isNotEmpty) {
+      onQuoteChanged(quotes[currentQuoteIndex]);
+      _startQuoteTimer();
+    }
   }
 
   void stop() {
@@ -93,4 +119,7 @@ class QuoteManager {
       print("Error clearing quotes: $e");
     }
   }
+
+  // Check if we need to initialize quotes after login
+  bool get needsInitialization => !_isInitialized;
 }
