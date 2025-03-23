@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- Google Sign-In configuration (already correct) -->
+    <key>GIDClientID</key>
+    <string>685238501821-t3010k2dntqhm8h14nh06ubtpa82jk58.apps.googleusercontent.com</string>
+
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
@@ -12,22 +16,34 @@
                 <string>com.googleusercontent.apps.685238501821-t3010k2dntqhm8h14nh06ubtpa82jk58</string>
             </array>
         </dict>
+        <!-- Add Facebook URL scheme -->
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>fb1652075802379061</string>
+            </array>
+        </dict>
     </array>
-    
-    <!-- For Facebook Sign-In -->
+
+    <!-- For Facebook Sign-In (updated) -->
     <key>FacebookAppID</key>
     <string>1652075802379061</string>
     <key>FacebookClientToken</key>
-    <string>YOUR-FACEBOOK-CLIENT-TOKEN</string>
+    <string>b6db750669fb44fc83cc6c0bd61f80a4</string> <!-- Replace with your actual client token from Facebook Developer Console -->
     <key>FacebookDisplayName</key>
     <string>Sweet Meter</string>
-    
+
+    <!-- Updated with additional schemes needed for Facebook on iOS -->
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>fbapi</string>
         <string>fb-messenger-share-api</string>
+        <string>fbauth2</string>
+        <string>fbshareextension</string>
     </array>
-    
+
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
     <key>CFBundleDevelopmentRegion</key>
@@ -58,13 +74,13 @@
     <string>LaunchScreen</string>
     <key>UIMainStoryboardFile</key>
     <string>Main</string>
-    
+
     <!-- Camera and Photo Library Permissions -->
     <key>NSCameraUsageDescription</key>
     <string>This app uses the camera to scan food items for recognition and barcodes.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>This app needs access to your photo library to select food images for analysis.</string>
-    
+
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
