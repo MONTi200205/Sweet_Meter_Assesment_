@@ -239,26 +239,46 @@ class MenuScreen extends StatelessWidget {
   // Upload profile picture to Firebase
   Future<String?> _uploadProfilePicture(String email, File imageFile) async {
     try {
+      print('Starting upload for email: $email');
+
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('profile_pictures')
           .child('$email.jpg');
 
+      print('Storage reference created');
+
       // Upload the file
       final uploadTask = storageRef.putFile(imageFile);
+      print('Upload task started');
+
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        print('Upload progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
+      }, onError: (e) {
+        print('Upload error: $e');
+      });
+
       final snapshot = await uploadTask;
+      print('Upload completed');
 
       // Get download URL
       final downloadUrl = await snapshot.ref.getDownloadURL();
+      print('Download URL received: $downloadUrl');
 
       // Save URL to Firestore
       await FirebaseFirestore.instance.collection('users').doc(email).set({
         'profilePictureUrl': downloadUrl,
       }, SetOptions(merge: true));
 
+      print('URL saved to Firestore');
+
       return downloadUrl;
     } catch (e) {
-      print('Error uploading profile picture: $e');
+      print('Detailed error uploading profile picture: $e');
+      if (e is FirebaseException) {
+        print('Firebase error code: ${e.code}');
+        print('Firebase error message: ${e.message}');
+      }
       return null;
     }
   }

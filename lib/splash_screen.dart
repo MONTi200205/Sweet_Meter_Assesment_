@@ -1,10 +1,10 @@
-// Add this to your pubspec.yaml:
-// assets:
-//   - assets/images/
-
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'login_screen.dart';
+import 'package:sweet_meter_assesment/utils/Darkmode.dart';
+import 'package:sweet_meter_assesment/utils/scaling_utils.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -21,6 +21,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
+
+    // Load scaling preference
+    loadScalePreference().then((value) {
+      if (mounted) {
+        setState(() {
+          // This is now handled by the scaling_utils.dart
+        });
+      }
+    });
 
     // Set up animations
     _animationController = AnimationController(
@@ -59,47 +68,111 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
+  // Function to load scale preference from SharedPreferences
+  Future<double> loadScalePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble('scaleFactor') ?? 1.0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3E5F5), // Light purple background
-      body: Center(
-        child: AnimatedBuilder(
-          animation: _animationController,
-          builder: (context, child) {
-            return FadeTransition(
-              opacity: _fadeInAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // PNG Logo Image
-                    Image.asset(
-                      'assets/sweetmeter.png', // Replace with your PNG file path
-                      width: 200,
-                      height: 200,
-                    ),
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
-                    const SizedBox(height: 30),
-
-                    // Tagline
-                    Text(
-                      'Control sugar',
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                        fontSize: 16,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+    return Stack(
+      children: [
+        // Background Color
+        Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: Background(context),
         ),
-      ),
+        // Background Image with Overlay
+        Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage("assets/Background.png"),
+              fit: BoxFit.cover,
+              colorFilter: ColorFilter.mode(
+                Colors.black.withOpacity(0.3),
+                BlendMode.darken,
+              ),
+            ),
+          ),
+        ),
+        Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(
+            child: AnimatedBuilder(
+              animation: _animationController,
+              builder: (context, child) {
+                return FadeTransition(
+                  opacity: _fadeInAnimation,
+                  child: ScaleTransition(
+                    scale: _scaleAnimation,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // App Logo with web/mobile detection - no white circle
+                        kIsWeb
+                            ? Image.network(
+                          'assets/sweetmeter.png',
+                          width: scaled(isLandscape ? screenHeight * 0.4 : screenWidth * 0.5),
+                          height: scaled(isLandscape ? screenHeight * 0.4 : screenWidth * 0.5),
+                          errorBuilder: (context, error, stackTrace) {
+                            // Fallback if image fails to load
+                            return Icon(
+                              Icons.health_and_safety,
+                              size: scaled(isLandscape ? screenHeight * 0.3 : screenWidth * 0.4),
+                              color: Colors.purple,
+                            );
+                          },
+                        )
+                            : Image.asset(
+                          'assets/sweetmeter.png',
+                          width: scaled(isLandscape ? screenHeight * 0.4 : screenWidth * 0.5),
+                          height: scaled(isLandscape ? screenHeight * 0.4 : screenWidth * 0.5),
+                        ),
+
+                        SizedBox(height: scaled(screenHeight * 0.04)),
+
+                        // App Name
+                        Text(
+                          "SWEET METER",
+                          style: TextStyle(
+                            fontFamily: 'Agbalumo',
+                            fontSize: scaled(isLandscape ? screenHeight * 0.05 : screenWidth * 0.08),
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+
+                        SizedBox(height: scaled(screenHeight * 0.02)),
+
+                        // Tagline - without purple container
+                        Text(
+                          'Control sugar',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: scaled(isLandscape ? screenHeight * 0.025 : screenWidth * 0.04),
+                            fontStyle: FontStyle.italic,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -4,13 +4,26 @@ import 'signup_screen.dart';
 import 'home_screen.dart';
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
-//import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 Future<void> signInWithGoogle(BuildContext context) async {
   try {
-    // Initialize GoogleSignIn with web support
-    final GoogleSignIn googleSignIn = GoogleSignIn();
+    GoogleSignIn googleSignIn;
+
+    if (kIsWeb) {
+      // Web configuration
+      googleSignIn = GoogleSignIn(
+        clientId: '685238501821-ch9t81g9dvcdfcquv2vpispjkukqu941.apps.googleusercontent.com',
+        scopes: ['email', 'profile'],
+      );
+    } else {
+      // iOS/Android configuration (no client ID needed here)
+      googleSignIn = GoogleSignIn(
+        scopes: ['email', 'profile'],
+      );
+    }
 
     // Trigger the authentication flow
     final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
@@ -19,6 +32,10 @@ Future<void> signInWithGoogle(BuildContext context) async {
     if (googleUser == null) {
       return;
     }
+
+    // Get profile picture URL from Google
+    String? photoUrl = googleUser.photoUrl;
+    final String email = googleUser.email;
 
     // Obtain the auth details from the request
     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
@@ -33,22 +50,23 @@ Future<void> signInWithGoogle(BuildContext context) async {
     final UserCredential userCredential =
     await FirebaseAuth.instance.signInWithCredential(credential);
 
+    // Save the Google profile picture URL to Firestore
+    if (photoUrl != null) {
+      await FirebaseFirestore.instance.collection('users').doc(email).set({
+        'profilePictureUrl': photoUrl,
+      }, SetOptions(merge: true));
+
+      print("Saved profile picture URL to Firestore: $photoUrl");
+    }
+
     // Navigate to home screen after successful login
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => HomeScreen()),
     );
 
-    // Optional: Get additional user data
-    print("User data: ${userCredential.user?.displayName}, ${userCredential.user?.email}");
-
-  } on FirebaseAuthException catch (e) {
-    // Handle Firebase Auth errors
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Authentication failed: ${e.message}')),
-    );
   } catch (e) {
-    // Handle other errors
+    print("Detailed Google Sign-In error: $e");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Error occurred: $e')),
     );
@@ -57,46 +75,63 @@ Future<void> signInWithGoogle(BuildContext context) async {
 // Keep only ONE version of this function
 Future<void> signInWithFacebook(BuildContext context) async {
   try {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Colors.purple),
+      ),
+    );
+
     // Trigger the sign-in flow
     final LoginResult result = await FacebookAuth.instance.login(
       permissions: ['email', 'public_profile'],
     );
 
     if (result.status == LoginStatus.success) {
-      // Create a credential from the access token
-      final OAuthCredential credential = FacebookAuthProvider.credential(
-        result.accessToken!.tokenString, // Changed from token to tokenString
+      // Get user data including email and profile picture
+      final userData = await FacebookAuth.instance.getUserData(
+        fields: "email,picture.width(400)",
       );
 
-      // Sign in to Firebase with the Facebook credential
-      final UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
+      // Extract email and profile picture URL
+      final String? email = userData['email'];
+      final String? profilePicUrl = userData['picture']?['data']?['url'];
 
-      // You now have a User object in userCredential.user
-      // You can navigate to your home screen or do something else
+      print("Facebook email: $email");
+      print("Facebook profile pic: $profilePicUrl");
+
+      // Store user data somewhere in your app - perhaps in shared preferences or a global variable
+      // Update global variable for immediate display
+      userProfileImageUrl = profilePicUrl;
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Navigate to home screen WITHOUT Firebase authentication
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => HomeScreen()),
       );
     } else {
-      // Handle login failure
+      // Close loading dialog
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Facebook login failed: ${result.message}')),
       );
     }
-  } on FirebaseAuthException catch (e) {
-    // Handle Firebase Auth errors
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Authentication failed: ${e.message}')),
-    );
   } catch (e) {
-    // Handle other errors
+    // Close loading dialog if open
+    try {
+      Navigator.pop(context);
+    } catch (_) {}
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error occurred: $e')),
+      SnackBar(content: Text('Error: $e')),
     );
   }
 }
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
 

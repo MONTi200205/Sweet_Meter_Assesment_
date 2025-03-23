@@ -91,18 +91,65 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   double? sugarPercentage;
   Color? sugarColor;
 
+  Future<void> _syncFoodDataFromFirestore() async {
+    try {
+      final email = FirebaseAuth.instance.currentUser?.email;
+      if (email == null) return;
+
+      // Get data from Firestore
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(email).get();
+      if (!doc.exists) return;
+
+      final data = doc.data();
+      if (data == null || !data.containsKey('foodEntries')) return;
+
+      // Get local data
+      final prefs = await SharedPreferences.getInstance();
+      final dataMapString = prefs.getString('userFoodData');
+      final Map<String, dynamic> dataMap =
+          dataMapString != null ? json.decode(dataMapString) : {};
+
+      // Check if we already have data locally for this user
+      if (dataMap.containsKey(email) &&
+          dataMap[email] is List &&
+          dataMap[email].isNotEmpty) {
+        // We already have local data, don't overwrite
+        return;
+      }
+
+      // If no local data, use Firestore data
+      final List<dynamic> cloudEntries = data['foodEntries'];
+      dataMap[email] = cloudEntries;
+
+      // Save to SharedPreferences
+      await prefs.setString('userFoodData', json.encode(dataMap));
+
+      // Refresh UI to show the latest entry
+      if (mounted) {
+        _loadLatestFoodEntry();
+      }
+
+      print('✅ Initial data sync completed from Firestore for $email');
+    } catch (e) {
+      print('❌ Error during initial data sync: $e');
+    }
+  }
+
+// Modify your initState to call this function when the screen loads
   @override
   void initState() {
     super.initState();
-    // Register this widget as an observer to detect app lifecycle changes
-    WidgetsBinding.instance.addObserver(this);//https://stackoverflow.com/questions/59153666/didchangeapplifecyclestate-doesnt-work-as-expected
+    WidgetsBinding.instance.addObserver(this);
 
     _initPowerSavingDetection();
     _loadQuotes();
     loadUserProfile(currentUserEmail);
 
-    // Load the latest food entry once at initialization
-    _loadLatestFoodEntry();
+    // First sync with Firestore, then load the latest entry
+    _syncFoodDataFromFirestore().then((_) {
+      _loadLatestFoodEntry();
+    });
 
     // Load scaling preference
     loadScalePreference().then((value) {

@@ -5,7 +5,7 @@ import 'firebase_options.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sweet_meter_assesment/utils/scaling_utils.dart';
-import 'splash_screen.dart'; // Import the new splash screen
+import 'splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
