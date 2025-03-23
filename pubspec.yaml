@@ -103,6 +103,7 @@ flutter:
   assets:
     - assets/log.jpg
     - assets/Background.png
+    - assets/sweetmeter.png
   fonts:
     - family: Agbalumo
       fonts:

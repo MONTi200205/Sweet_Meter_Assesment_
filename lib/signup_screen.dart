@@ -13,8 +13,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  bool _isLoading = false;
 
   Future<void> _signUp() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
@@ -23,23 +28,70 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Passwords do not match")),
       );
+      setState(() {
+        _isLoading = false;
+      });
       return;
     }
 
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // Create the user account
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Account created successfully!")),
-      );
-      Navigator.pop(context); // Navigate back to the Login screen
+
+      // Send email verification
+      await userCredential.user!.sendEmailVerification();
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Show verification instructions dialog
+      _showVerificationDialog();
+
     } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
     }
+  }
+
+  void _showVerificationDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Verify Your Email"),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text("A verification link has been sent to ${_emailController.text}"),
+                const SizedBox(height: 10),
+                const Text("Please check your email and click on the link to verify your account."),
+                const SizedBox(height: 10),
+                const Text("You won't be able to log in until you verify your email."),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                Navigator.of(context).pop(); // Go back to login screen
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -85,6 +137,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
           isLandscape
               ? _buildLandscapeLayout(context, size)
               : _buildPortraitLayout(context, size),
+
+          // Loading indicator
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -188,6 +251,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         // Email TextField
         TextField(
           controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: "Email",
@@ -249,7 +313,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           width: size.width * 0.25,
           height: size.height * 0.06,
           child: ElevatedButton(
-            onPressed: _signUp,
+            onPressed: _isLoading ? null : _signUp,
             child: Text(
               "Sign Up",
               style: TextStyle(
@@ -291,7 +355,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
           SizedBox(height: size.height * 0.008),
           Text(
-            "Welcome to Sweet Meter! Create your account to track preferences and personalize your experience.",
+            "Welcome to Sweet Meter! Create your account to track preferences and personalize your experience. We'll send a verification email to confirm your account.",
             style: TextStyle(
               color: Colors.white70,
               fontSize: size.width * 0.012,
@@ -347,6 +411,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         // Email TextField
         TextField(
           controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: "Email",
@@ -408,7 +473,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           width: isPortrait ? size.width * 0.6 : size.width * 0.3,
           height: isPortrait ? size.height * 0.06 : size.height * 0.1,
           child: ElevatedButton(
-            onPressed: _signUp,
+            onPressed: _isLoading ? null : _signUp,
             child: Text(
               "Sign Up",
               style: TextStyle(

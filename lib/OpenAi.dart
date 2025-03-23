@@ -35,22 +35,19 @@ class OpenAIService {
       "messages": [
         {
           "role": "system",
-          "content":
-              "You generate creative, diverse, and **non-repetitive** motivational quotes about healthy eating. Each quote must be **unique**, avoiding similar structures or phrasing. **Do NOT start with 'Fuel your body with vibrant foods' or any similar phrase.**"
+          "content": "You provide engaging, diverse, and **non-repetitive** "
+              "health tips and food facts. Each response must be **unique**, avoiding similar structures"
+              " or phrasing. Share a useful health tip or an interesting fact about a specific food and its"
+              " benefits. Keep responses varied and informative, using a mix of 'Did you know…' facts, 'Try this…'"
+              " tips, and 'This food helps with…' insights. and keep it within 25 words"
         },
         {
           "role": "user",
-          "content":
-              "Generate a short, unique, and **original** motivational quote about healthy eating. Avoid clichés and do not repeat common phrases. Here are examples of diverse quotes:\n\n"
-                  "- 'Nourish your body, empower your mind.'\n"
-                  "- 'Healthy choices today, a stronger tomorrow.'\n"
-                  "- 'Nature’s fuel keeps you unstoppable.'\n"
-                  "- 'Eat well, live well, be well.'\n\n"
-                  "Now generate a **completely different** quote."
+          "content": "Give me a unique and useful health tip or food fact. Avoid repeating common phrases and make sure each response is different."
         }
       ],
-      "temperature": 1.0, // Max randomness for variety
-      "max_tokens": 50, // Shorten quote length to avoid redundancy
+      "temperature": 1,
+      "max_tokens": 50
     });
 
     try {
