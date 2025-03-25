@@ -105,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _quoteManager.loadQuotes(newQuotes);
     });
   }
+
   @override
   void dispose() {
     _quoteManager.stop();
@@ -113,8 +114,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Stack(
       children: [
@@ -142,29 +145,27 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
 
         Scaffold(
-          backgroundColor: Background(context),
+          backgroundColor: Colors.transparent,
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(screenHeight * 0.1),
             child: Container(
-              //color: BackgroundAppBar(context),
               padding: EdgeInsets.only(top: screenHeight * 0.03),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   SizedBox(height: screenHeight * 0.4),
                   Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
                     child: CircleAvatar(
                       backgroundImage: AssetImage('assets/profile_image.png'),
-                      radius: screenWidth * 0.05,
+                      radius: isLandscape ? screenHeight * 0.05 : screenWidth * 0.05,
                     ),
                   ),
                   Text(
                     "SWEET METER",
                     style: TextStyle(
                       fontFamily: 'Agbalumo', // Replace with your font
-                      fontSize: screenWidth * 0.07,
+                      fontSize: isLandscape ? screenWidth * 0.06 : screenWidth * 0.07,
                       fontWeight: FontWeight.bold,
                       color: Colors.purple,
                     ),
@@ -179,10 +180,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         builder: (context) {
                           return Builder(
                             builder: (context) {
-                              Menu(_menuKey).showMenu(
-                                  context); // Show the menu when the button is pressed
-                              return SizedBox
-                                  .shrink(); // Return an empty widget as the builder
+                              Menu(_menuKey).showMenu(context); // Show the menu when the button is pressed
+                              return SizedBox.shrink(); // Return an empty widget as the builder
                             },
                           );
                         },
@@ -193,16 +192,252 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          body: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(screenWidth * 0.04),
+          body: isLandscape
+              ? _buildLandscapeLayout(context, size)
+              : _buildPortraitLayout(context, size),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPortraitLayout(BuildContext context, Size size) {
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.all(screenWidth * 0.04),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Shift everything down
+            SizedBox(height: screenHeight * 0.05),
+
+            // Latest Measurements Card (Button)
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => History()),
+                );
+              },
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(screenWidth * 0.05),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.3),
+                      blurRadius: screenWidth * 0.02,
+                      offset: Offset(0, screenWidth * 0.01),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Latest Measurements",
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.045,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          SizedBox(height: screenHeight * 0.01),
+                          FutureBuilder<Map<String, String>?>(
+                            future: getLatestFoodEntry(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return CircularProgressIndicator();
+                              }
+                              if (snapshot.hasError) {
+                                return Text('Error: ${snapshot.error}');
+                              }
+                              if (snapshot.hasData &&
+                                  snapshot.data != null) {
+                                return Text(
+                                  snapshot.data!['foodName'] ?? "Unknown",
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.07,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                );
+                              }
+                              return Text("No history available");
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        children: [
+                          SizedBox(height: screenHeight * 0.01),
+                          FutureBuilder<Map<String, String>?>(
+                            future: getLatestFoodEntry(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return CircularProgressIndicator();
+                              }
+                              if (snapshot.hasError) {
+                                return Text('Error: ${snapshot.error}');
+                              }
+                              if (snapshot.hasData &&
+                                  snapshot.data != null) {
+                                double sugarPercentage =
+                                _extractPercentage(
+                                    snapshot.data!['sugarLevel'] ??
+                                        '0');
+                                return Column(
+                                  children: [
+                                    Text(
+                                      "$sugarPercentage%",
+                                      style: TextStyle(
+                                        fontSize: screenWidth * 0.05,
+                                        fontWeight: FontWeight.bold,
+                                        color: _getColorForPercentage(
+                                            sugarPercentage),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                        height: screenHeight * 0.005),
+                                    Icon(
+                                      Icons.circle,
+                                      color: _getColorForPercentage(
+                                          sugarPercentage),
+                                      size: screenWidth * 0.12,
+                                    ),
+                                  ],
+                                );
+                              }
+                              return Text("No sugar level available");
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            SizedBox(height: screenHeight * 0.03),
+
+            // Track New Food Button
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  // Navigate to ScanOrTypeScreen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => ScanOrTypeScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth * 0.1,
+                    vertical: screenHeight * 0.02,
+                  ),
+                ),
+                child: Text(
+                  "Track New Food",
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.045,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+
+            SizedBox(height: screenHeight * 0.03),
+
+            // Eat Healthy Section
+            SizedBox(height: screenHeight * 0.01),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Eat Healthy,",
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.045,
+                    fontWeight: FontWeight.bold,
+                    color: BlackText(context),
+                  ),
+                ),
+                Builder(
+                  builder: (context) => IconButton(
+                    icon: Icon(Icons.refresh_rounded,
+                        color: IconColor(context)),
+                    onPressed: () {
+                      _clearSavedQuotes();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content:
+                            Text("Quotes cleared successfully!")),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: screenHeight * 0.01),
+            Center(
+              child: SizedBox(
+                width: screenWidth * 0.8,
+                height: screenHeight * 0.3,
+                child: Center(
+                  child: Center(
+                    child: Text(
+                      currentQuote,
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.06,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLandscapeLayout(BuildContext context, Size size) {
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.all(screenWidth * 0.03),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left Column - Latest Measurements and Button
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Shift everything down
-                  SizedBox(height: screenHeight * 0.05),
+                  SizedBox(height: screenHeight * 0.02),
 
-                  // Latest Measurements Card (Button)
+                  // Latest Measurements Card
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -212,10 +447,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                     child: Container(
                       width: double.infinity,
-                      padding: EdgeInsets.all(screenWidth * 0.05),
+                      padding: EdgeInsets.all(screenWidth * 0.03),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.grey.withOpacity(0.3),
@@ -235,7 +470,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Text(
                                   "Latest Measurements",
                                   style: TextStyle(
-                                    fontSize: screenWidth * 0.045,
+                                    fontSize: screenWidth * 0.03,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black54,
                                   ),
@@ -244,19 +479,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                 FutureBuilder<Map<String, String>?>(
                                   future: getLatestFoodEntry(),
                                   builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
+                                    if (snapshot.connectionState == ConnectionState.waiting) {
                                       return CircularProgressIndicator();
                                     }
                                     if (snapshot.hasError) {
                                       return Text('Error: ${snapshot.error}');
                                     }
-                                    if (snapshot.hasData &&
-                                        snapshot.data != null) {
+                                    if (snapshot.hasData && snapshot.data != null) {
                                       return Text(
                                         snapshot.data!['foodName'] ?? "Unknown",
                                         style: TextStyle(
-                                          fontSize: screenWidth * 0.07,
+                                          fontSize: screenWidth * 0.035,
                                           fontWeight: FontWeight.bold,
                                           color: Colors.black,
                                         ),
@@ -276,37 +509,30 @@ class _HomeScreenState extends State<HomeScreen> {
                                 FutureBuilder<Map<String, String>?>(
                                   future: getLatestFoodEntry(),
                                   builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
+                                    if (snapshot.connectionState == ConnectionState.waiting) {
                                       return CircularProgressIndicator();
                                     }
                                     if (snapshot.hasError) {
                                       return Text('Error: ${snapshot.error}');
                                     }
-                                    if (snapshot.hasData &&
-                                        snapshot.data != null) {
-                                      double sugarPercentage =
-                                          _extractPercentage(
-                                              snapshot.data!['sugarLevel'] ??
-                                                  '0');
+                                    if (snapshot.hasData && snapshot.data != null) {
+                                      double sugarPercentage = _extractPercentage(
+                                          snapshot.data!['sugarLevel'] ?? '0');
                                       return Column(
                                         children: [
                                           Text(
                                             "$sugarPercentage%",
                                             style: TextStyle(
-                                              fontSize: screenWidth * 0.05,
+                                              fontSize: screenWidth * 0.03,
                                               fontWeight: FontWeight.bold,
-                                              color: _getColorForPercentage(
-                                                  sugarPercentage),
+                                              color: _getColorForPercentage(sugarPercentage),
                                             ),
                                           ),
-                                          SizedBox(
-                                              height: screenHeight * 0.005),
+                                          SizedBox(height: screenHeight * 0.005),
                                           Icon(
                                             Icons.circle,
-                                            color: _getColorForPercentage(
-                                                sugarPercentage),
-                                            size: screenWidth * 0.12,
+                                            color: _getColorForPercentage(sugarPercentage),
+                                            size: screenWidth * 0.06,
                                           ),
                                         ],
                                       );
@@ -328,89 +554,93 @@ class _HomeScreenState extends State<HomeScreen> {
                   Center(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Navigate to ScanOrTypeScreen
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (context) => ScanOrTypeScreen()),
+                          MaterialPageRoute(builder: (context) => ScanOrTypeScreen()),
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.purple,
                         padding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.1,
-                          vertical: screenHeight * 0.02,
+                          horizontal: screenWidth * 0.05,
+                          vertical: screenHeight * 0.025,
                         ),
                       ),
                       child: Text(
                         "Track New Food",
                         style: TextStyle(
-                          fontSize: screenWidth * 0.045,
-                          color:
-                              Colors.white, // Changed the text color to white
+                          fontSize: screenWidth * 0.025,
+                          color: Colors.white,
                         ),
                       ),
                     ),
                   ),
+                ],
+              ),
+            ),
 
-                  SizedBox(height: screenHeight * 0.03),
+            SizedBox(width: screenWidth * 0.02),
 
-                  // Eat Healthy Section
-                  SizedBox(height: screenHeight * 0.01),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Right Column - Eat Healthy Quote
+            Expanded(
+              child: Container(
+                margin: EdgeInsets.only(top: screenHeight * 0.02),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(screenWidth * 0.03),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Eat Healthy,",
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.045,
-                          fontWeight: FontWeight.bold,
-                          color: BlackText(context),
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Eat Healthy,",
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.03,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.refresh_rounded, color: Colors.white),
+                            onPressed: () {
+                              _clearSavedQuotes();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Quotes cleared successfully!")),
+                              );
+                            },
+                            iconSize: screenWidth * 0.03,
+                          ),
+                        ],
                       ),
-                      Builder(
-                        builder: (context) => IconButton(
-                          icon: Icon(Icons.refresh_rounded,
-                              color: IconColor(context)),
-                          onPressed: () {
-                            _clearSavedQuotes();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text("Quotes cleared successfully!")),
-                            );
-                          },
+                      SizedBox(height: screenHeight * 0.02),
+                      Container(
+                        height: screenHeight * 0.4,
+                        alignment: Alignment.center,
+                        child: SingleChildScrollView(
+                          child: Text(
+                            currentQuote,
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.03,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
                     ],
                   ),
-
-                  SizedBox(height: screenHeight * 0.01),
-                  Center(
-                    child: SizedBox(
-                      width: screenWidth * 0.8, // Set width
-                      height:screenHeight * 0.3, // Set height
-                      child: Center( // Optional: Center text inside the box
-                        child: Center(
-                          child: Text(
-                            currentQuote,
-                            style: TextStyle(
-                              fontSize: screenWidth * 0.06,
-                              fontStyle: FontStyle.italic,
-                              color: Colors.white,
-                             // align: TextAlign.justify,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ) ,
-                  ),
-
-                ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
