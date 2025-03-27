@@ -8,18 +8,19 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+// Handles Google Sign-In authentication flow for both web and mobile platforms
 Future<void> signInWithGoogle(BuildContext context) async {
   try {
     GoogleSignIn googleSignIn;
 
     if (kIsWeb) {
-      // Web configuration
+      // Web-specific configuration with client ID
       googleSignIn = GoogleSignIn(
         clientId: '685238501821-ch9t81g9dvcdfcquv2vpispjkukqu941.apps.googleusercontent.com',
         scopes: ['email', 'profile'],
       );
     } else {
-      // iOS/Android configuration (no client ID needed here)
+      // Mobile configuration
       googleSignIn = GoogleSignIn(
         scopes: ['email', 'profile'],
       );
@@ -28,29 +29,28 @@ Future<void> signInWithGoogle(BuildContext context) async {
     // Trigger the authentication flow
     final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
-    // If user cancels the sign-in process
     if (googleUser == null) {
-      return;
+      return; // User canceled the sign-in process
     }
 
-    // Get profile picture URL from Google
+    // Extract profile data
     String? photoUrl = googleUser.photoUrl;
     final String email = googleUser.email;
 
-    // Obtain the auth details from the request
+    // Get authentication tokens
     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-    // Create a new credential
+    // Create Firebase credential
     final credential = GoogleAuthProvider.credential(
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
 
-    // Sign in to Firebase with the Google credential
+    // Sign in to Firebase
     final UserCredential userCredential =
     await FirebaseAuth.instance.signInWithCredential(credential);
 
-    // Save the Google profile picture URL to Firestore
+    // Save profile picture to Firestore for later use
     if (photoUrl != null) {
       await FirebaseFirestore.instance.collection('users').doc(email).set({
         'profilePictureUrl': photoUrl,
@@ -72,10 +72,11 @@ Future<void> signInWithGoogle(BuildContext context) async {
     );
   }
 }
-// Keep only ONE version of this function
+
+// Handles Facebook authentication flow
 Future<void> signInWithFacebook(BuildContext context) async {
   try {
-    // Show loading indicator
+    // Show loading indicator during auth process
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -84,32 +85,31 @@ Future<void> signInWithFacebook(BuildContext context) async {
       ),
     );
 
-    // Trigger the sign-in flow
+    // Request Facebook login
     final LoginResult result = await FacebookAuth.instance.login(
       permissions: ['email', 'public_profile'],
     );
 
     if (result.status == LoginStatus.success) {
-      // Get user data including email and profile picture
+      // Get user profile data
       final userData = await FacebookAuth.instance.getUserData(
         fields: "email,picture.width(400)",
       );
 
-      // Extract email and profile picture URL
+      // Extract user information
       final String? email = userData['email'];
       final String? profilePicUrl = userData['picture']?['data']?['url'];
 
       print("Facebook email: $email");
       print("Facebook profile pic: $profilePicUrl");
 
-      // Store user data somewhere in your app - perhaps in shared preferences or a global variable
       // Update global variable for immediate display
       userProfileImageUrl = profilePicUrl;
 
       // Close loading dialog
       Navigator.pop(context);
 
-      // Navigate to home screen WITHOUT Firebase authentication
+      // Navigate to home screen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -132,6 +132,8 @@ Future<void> signInWithFacebook(BuildContext context) async {
     );
   }
 }
+
+// Main login screen widget
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
 
@@ -145,7 +147,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Get screen size and orientation
     final size = MediaQuery.of(context).size;
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
@@ -154,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // Background Image
+          // Background image
           Container(
             width: size.width,
             height: size.height,
@@ -165,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          // Purple Gradient Overlay
+          // Purple gradient overlay
           Container(
             width: size.width,
             height: size.height,
@@ -178,12 +179,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
+          // Dark mode tinting
           Container(
             width: size.width,
             height: size.height,
             color: Tinting(context),
           ),
-          // Main Content - Choose layout based on orientation
+          // Responsive layout based on orientation
           isLandscape
               ? _buildLandscapeLayout(context, size)
               : _buildPortraitLayout(context, size),
@@ -192,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Portrait layout (original layout)
+  // Portrait mode layout
   Widget _buildPortraitLayout(BuildContext context, Size size) {
     return SingleChildScrollView(
       child: Padding(
@@ -201,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: Column(
           children: [
-            // Title
+            // App title
             Center(
               child: Padding(
                 padding: EdgeInsets.only(top: size.height * 0.05),
@@ -217,9 +219,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             SizedBox(height: size.height * 0.05),
-            // Login Form
+            // Login form
             _buildLoginForm(context, size),
-            // Social Login Buttons - Portrait Layout
+            // Social login options
             _buildSocialLoginButtons(context, size, isPortrait: true),
             SizedBox(height: size.height * 0.05),
           ],
@@ -228,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Landscape layout - fixed with scrolling and bottom positioning
+  // Landscape mode layout
   Widget _buildLandscapeLayout(BuildContext context, Size size) {
     return SafeArea(
       child: SingleChildScrollView(
@@ -241,35 +243,35 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           child: Column(
             children: [
-              // Title - bigger in landscape
+              // App title
               Padding(
                 padding: EdgeInsets.only(bottom: size.height * 0.02),
                 child: Text(
                   "SWEET METER",
                   style: TextStyle(
                     fontFamily: 'Agbalumo',
-                    fontSize: size.width * 0.12, // Bigger font in landscape
+                    fontSize: size.width * 0.12,
                     fontWeight: FontWeight.bold,
                     color: Colors.white.withOpacity(0.9),
                   ),
                 ),
               ),
 
-              // Add padding to push content down
+              // Vertical space
               SizedBox(height: size.height * 0.15),
 
-              // Main content with bottom margin to prevent overflow
+              // Two-column layout for login form and social buttons
               Padding(
                 padding: EdgeInsets.only(bottom: size.height * 0.02),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Login form on the left
+                    // Login form column
                     Expanded(
                       child: _buildCompactLoginForm(context, size),
                     ),
                     SizedBox(width: size.width * 0.05),
-                    // Social buttons on the right
+                    // Social login column
                     Expanded(
                       child: _buildSocialLoginButtons(context, size,
                           isPortrait: false),
@@ -284,7 +286,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Login form - reused in both layouts
+  // Standard login form for portrait orientation
   Widget _buildLoginForm(BuildContext context, Size size) {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
@@ -292,7 +294,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Email TextField
+        // Email field
         TextField(
           controller: _emailController,
           style: const TextStyle(color: Colors.white),
@@ -311,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         SizedBox(height: isLandscape ? size.height * 0.01 : size.height * 0.02),
-        // Password TextField
+        // Password field
         TextField(
           controller: _passwordController,
           obscureText: true,
@@ -331,7 +333,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         SizedBox(height: isLandscape ? size.height * 0.02 : size.height * 0.04),
-        // Login Button
+        // Login button
         SizedBox(
           width: isLandscape ? size.width * 0.3 : size.width * 0.6,
           height: isLandscape ? size.height * 0.1 : size.height * 0.06,
@@ -363,7 +365,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         SizedBox(height: isLandscape ? size.height * 0.01 : size.height * 0.02),
-        // Reset Password Button
+        // Password reset option
         TextButton(
           onPressed: () async {
             try {
@@ -393,7 +395,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
-        // Create Account Button
+        // Account creation option
         TextButton(
           onPressed: () {
             Navigator.push(
@@ -413,13 +415,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // More compact login form for landscape orientation
+  // Compact login form for landscape orientation
   Widget _buildCompactLoginForm(BuildContext context, Size size) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Email TextField
+        // Email field
         TextField(
           controller: _emailController,
           style: const TextStyle(color: Colors.white),
@@ -438,7 +440,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         SizedBox(height: size.height * 0.008),
-        // Password TextField
+        // Password field
         TextField(
           controller: _passwordController,
           obscureText: true,
@@ -458,7 +460,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         SizedBox(height: size.height * 0.012),
-        // Login Button
+        // Login button
         SizedBox(
           width: size.width * 0.25,
           height: size.height * 0.06,
@@ -493,10 +495,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Social login buttons - reused in both layouts
+  // Social login options that adapt based on orientation
   Widget _buildSocialLoginButtons(BuildContext context, Size size,
       {required bool isPortrait}) {
     if (isPortrait) {
+      // Portrait layout - horizontal buttons
       return Column(
         children: [
           Divider(
@@ -504,7 +507,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // Facebook Button
+              // Facebook login
               SizedBox(
                 width: size.width * 0.38,
                 height: size.height * 0.05,
@@ -522,7 +525,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              // Google Button (replaced Apple)
+              // Google login
               SizedBox(
                 width: size.width * 0.38,
                 height: size.height * 0.05,
@@ -545,7 +548,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       );
     } else {
-      // Landscape layout for social buttons - more compact
+      // Landscape layout - vertical cards with additional options
       return Container(
         decoration: BoxDecoration(
           color: Colors.black12,
@@ -557,7 +560,7 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Connect title
+            // Section title
             Text(
               "Connect with",
               style: TextStyle(
@@ -568,7 +571,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: size.height * 0.01),
 
-            // Facebook Button
+            // Facebook login
             SizedBox(
               width: double.infinity,
               height: size.height * 0.06,
@@ -591,13 +594,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: size.height * 0.008),
 
-            // Google Button (replaced Apple)
+            // Google login
             SizedBox(
               width: size.width * 0.38,
               height: size.height * 0.05,
               child: ElevatedButton.icon(
                 onPressed: () {
-                 signInWithGoogle(context);
+                  signInWithGoogle(context);
                 },
                 icon: const Icon(Icons.g_mobiledata, color: Colors.white),
                 label: const Text(
@@ -610,7 +613,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            // Divider
+            // Section divider
             Padding(
               padding: EdgeInsets.symmetric(vertical: size.height * 0.012),
               child: Divider(
@@ -619,7 +622,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            // Account Options heading
+            // Additional options section
             Text(
               "Account Options",
               style: TextStyle(
@@ -630,7 +633,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: size.height * 0.01),
 
-            // Reset Password Button
+            // Password reset
             SizedBox(
               width: double.infinity,
               height: size.height * 0.05,
@@ -670,7 +673,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: size.height * 0.008),
 
-            // Sign Up Button
+            // Account creation
             SizedBox(
               width: double.infinity,
               height: size.height * 0.05,

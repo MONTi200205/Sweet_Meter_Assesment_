@@ -16,12 +16,13 @@ import 'package:battery_plus/battery_plus.dart';
 import 'dart:async';
 import 'package:sweet_meter_assesment/utils/scaling_utils.dart';
 import 'dart:math';
+import 'daily_sugar.dart';
 
-// Add global variables here
+// Global variables for user profile data
 String? userProfileImageUrl;
 String currentUserEmail = FirebaseAuth.instance.currentUser?.email ?? '';
 
-// Function to fetch food history from SharedPreferences
+// Retrieves the most recent food entry from SharedPreferences for the current user
 Future<Map<String, String>?> getLatestFoodEntry() async {
   final prefs = await SharedPreferences.getInstance();
   final dataMapString = prefs.getString('userFoodData');
@@ -44,19 +45,17 @@ Future<Map<String, String>?> getLatestFoodEntry() async {
   return null; // Return null if no entry is found
 }
 
-// Function to extract the numeric percentage value from the sugar level string
+// Extracts the numeric percentage value from a sugar level string
 double _extractPercentage(String sugarLevel) {
-  final regex = RegExp(
-      r'(\d+\.?\d*)'); // Regex to extract numbers (handles integers and decimals)
+  final regex = RegExp(r'(\d+\.?\d*)');
   final match = regex.firstMatch(sugarLevel);
   if (match != null) {
-    return double.tryParse(match.group(0) ?? '0') ??
-        0; // Extract and parse the percentage
+    return double.tryParse(match.group(0) ?? '0') ?? 0;
   }
   return 0;
 }
 
-// Function to return the appropriate color based on the percentage
+// Returns appropriate color based on sugar percentage level
 Color _getColorForPercentage(double percentage) {
   if (percentage >= 0 && percentage <= 25) {
     return Colors.green; // Green for 0-25%
@@ -82,15 +81,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late QuoteManager _quoteManager;
   final OpenAIService _openAIService = OpenAIService();
 
-  // Add state variables to store the latest food entry data
+  // State variables for food entry data
   Map<String, String>? latestFoodEntry;
   bool isLoadingFoodEntry = true;
   String? foodEntryError;
 
-  // Variables for sugar percentage and color
+  // Sugar percentage visualization data
   double? sugarPercentage;
   Color? sugarColor;
 
+  // Syncs food data from Firestore if local data is not available
   Future<void> _syncFoodDataFromFirestore() async {
     try {
       final email = FirebaseAuth.instance.currentUser?.email;
@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       // Get data from Firestore
       final doc =
-          await FirebaseFirestore.instance.collection('users').doc(email).get();
+      await FirebaseFirestore.instance.collection('users').doc(email).get();
       if (!doc.exists) return;
 
       final data = doc.data();
@@ -108,13 +108,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final prefs = await SharedPreferences.getInstance();
       final dataMapString = prefs.getString('userFoodData');
       final Map<String, dynamic> dataMap =
-          dataMapString != null ? json.decode(dataMapString) : {};
+      dataMapString != null ? json.decode(dataMapString) : {};
 
-      // Check if we already have data locally for this user
+      // Skip if we already have local data for this user
       if (dataMap.containsKey(email) &&
           dataMap[email] is List &&
           dataMap[email].isNotEmpty) {
-        // We already have local data, don't overwrite
         return;
       }
 
@@ -125,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // Save to SharedPreferences
       await prefs.setString('userFoodData', json.encode(dataMap));
 
-      // Refresh UI to show the latest entry
+      // Refresh UI with latest entry
       if (mounted) {
         _loadLatestFoodEntry();
       }
@@ -136,7 +135,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-// Modify your initState to call this function when the screen loads
   @override
   void initState() {
     super.initState();
@@ -161,16 +159,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
-  // When app resumes from background, refresh data
+  // Refresh data when app resumes from background
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // App came back to foreground, refresh data
       _loadLatestFoodEntry();
     }
   }
 
-  // Load the food entry data once and store in state
+  // Loads the latest food entry data and updates UI state
   Future<void> _loadLatestFoodEntry() async {
     if (!mounted) return;
 
@@ -187,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           latestFoodEntry = entry;
           isLoadingFoodEntry = false;
 
-          // Calculate sugar percentage and color once
+          // Calculate sugar percentage and color for visualization
           if (entry != null) {
             sugarPercentage = _extractPercentage(entry['sugarLevel'] ?? '0%');
             sugarColor = _getColorForPercentage(sugarPercentage!);
@@ -204,14 +201,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // Existing functions stay the same...
   final Battery _battery = Battery();
   StreamSubscription<BatteryState>? _batteryStateSubscription;
 
+  // Loads user profile data including profile picture
   Future<void> loadUserProfile(String email) async {
     try {
       final userDoc =
-          await FirebaseFirestore.instance.collection('users').doc(email).get();
+      await FirebaseFirestore.instance.collection('users').doc(email).get();
 
       if (userDoc.exists && userDoc.data()!.containsKey('profilePictureUrl')) {
         if (mounted) {
@@ -225,6 +222,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  // Initializes and loads motivational quotes
   Future<void> _loadQuotes() async {
     // Initialize QuoteManager with callback
     _quoteManager = QuoteManager(onQuoteChanged: (quote) {
@@ -235,17 +233,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     });
 
-    // Check battery state first
+    // Check battery state and pause in power save mode
     bool isInPowerSaveMode = await _battery.isInBatterySaveMode;
     if (isInPowerSaveMode) {
       _quoteManager.pause();
       return;
     }
 
-    // Load quotes from OpenAI service
+    // Load quotes from OpenAI service or generate new ones if needed
     List<String> savedQuotes = await _openAIService.getSavedQuotes();
     if (savedQuotes.isEmpty) {
-      // Show loading message while generating quotes
       if (mounted) {
         setState(() {
           currentQuote = "Loading quotes...";
@@ -257,13 +254,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       savedQuotes = await _openAIService.getSavedQuotes();
     }
 
-    // Load quotes into the manager
+    // Load quotes into the manager and update display
     _quoteManager.loadQuotes(savedQuotes);
-
-    // Force a quote update to ensure display after login
     _quoteManager.forceQuoteUpdate();
   }
 
+  // Clears and regenerates motivational quotes
   Future<void> _clearSavedQuotes() async {
     await _quoteManager.clearSavedQuotes();
     setState(() {
@@ -278,6 +274,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
+  // Sets up battery state monitoring for power saving features
   void _initPowerSavingDetection() async {
     // Get initial power save mode state
     bool isInPowerSaveMode = await _battery.isInBatterySaveMode;
@@ -286,11 +283,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Listen for changes to power save mode
     _batteryStateSubscription =
         _battery.onBatteryStateChanged.listen((_) async {
-      bool newPowerSaveMode = await _battery.isInBatterySaveMode;
-      _handlePowerSavingModeChanged(newPowerSaveMode);
-    });
+          bool newPowerSaveMode = await _battery.isInBatterySaveMode;
+          _handlePowerSavingModeChanged(newPowerSaveMode);
+        });
   }
 
+  // Handles changes to power saving mode
   void _handlePowerSavingModeChanged(bool isInPowerSaveMode) {
     if (mounted) {
       setState(() {
@@ -309,7 +307,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    // Clean up observers when disposing
+    // Clean up resources
     WidgetsBinding.instance.removeObserver(this);
     _quoteManager.stop();
     _batteryStateSubscription?.cancel();
@@ -326,12 +324,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return Stack(
       children: [
-        // Background Color & Image Overlay (no change)
+        // Background color
         Container(
           width: double.infinity,
           height: double.infinity,
           color: Background(context),
         ),
+        // Background image with overlay
         Container(
           width: double.infinity,
           height: double.infinity,
@@ -347,20 +346,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ),
 
+        // Main UI content
         Scaffold(
           backgroundColor: Colors.transparent,
-          // Updated AppBar in HomeScreen's build method
-          // Replace this code in your HomeScreen.dart file
-// Specifically in the AppBar section of the build method
-
-          // REPLACE THE ENTIRE APPBAR SECTION with this clean implementation:
-
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(screenHeight * 0.1),
             child: Container(
               padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
               decoration: BoxDecoration(
-                color: Colors.purple, // Solid purple to match login screen
+                color: Colors.purple,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black26,
@@ -372,9 +366,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Simple menu button - no more references to the old Menu class
+                  // Menu button
                   IconButton(
-                    icon: Icon(Icons.menu, color: Colors.white),
+                    icon: Icon(Icons.menu, color: IconColor(context)),
                     onPressed: () {
                       showModalBottomSheet(
                         context: context,
@@ -393,6 +387,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       );
                     },
                   ),
+                  // App title
                   Text(
                     "SWEET METER",
                     style: TextStyle(
@@ -404,12 +399,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       color: Colors.white,
                     ),
                   ),
+                  // User profile picture
                   Container(
                     margin: EdgeInsets.only(right: screenWidth * 0.02),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.white,
+                        color: IconColor(context),
                         width: 2.0,
                       ),
                     ),
@@ -417,7 +413,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       backgroundImage: userProfileImageUrl != null
                           ? NetworkImage(userProfileImageUrl!)
                           : AssetImage('assets/profile_image.png')
-                              as ImageProvider,
+                      as ImageProvider,
                       radius: isLandscape
                           ? screenHeight * 0.04
                           : screenWidth * 0.045,
@@ -427,6 +423,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
+          // Responsive layout based on orientation
           body: isLandscape
               ? _buildLandscapeLayout(context, size)
               : _buildPortraitLayout(context, size),
@@ -435,6 +432,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  // Portrait layout UI builder
   Widget _buildPortraitLayout(BuildContext context, Size size) {
     final screenWidth = size.width;
     final screenHeight = size.height;
@@ -457,24 +455,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 // Refresh data when returning from History screen
                 _loadLatestFoodEntry();
               },
-              child: // Precise fix for the overflowing Latest Measurements card
-// Replace just the relevant portion of the _buildPortraitLayout method
-
-// Inside the GestureDetector that wraps the Latest Measurements card:
-                  Container(
+              child: Container(
                 width: double.infinity,
-                // Add padding bottom to ensure space for the overflow
                 padding: EdgeInsets.fromLTRB(
                   scaled(screenWidth * 0.05),
                   scaled(screenWidth * 0.05),
                   scaled(screenWidth * 0.05),
-                  scaled(screenWidth * 0.05 +
-                      20), // Add extra 20 pixels to bottom padding
+                  scaled(screenWidth * 0.05 + 20),
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: BackgroundAppBar(context),
                   borderRadius:
-                      BorderRadius.circular(scaled(screenWidth * 0.03)),
+                  BorderRadius.circular(scaled(screenWidth * 0.03)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.grey.withOpacity(0.3),
@@ -484,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ],
                 ),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start, // Align to top
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       flex: 3,
@@ -504,7 +496,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ),
                           SizedBox(height: scaled(screenHeight * 0.01)),
 
-                          // Content for food name and sugar content label
+                          // Food entry content section
                           if (isLoadingFoodEntry)
                             Container(
                               height: scaled(screenHeight * 0.08),
@@ -522,54 +514,52 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               ),
                             )
                           else if (latestFoodEntry != null)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  latestFoodEntry!['foodName'] ?? "Unknown",
-                                  style: TextStyle(
-                                    fontSize: scaled(screenWidth * 0.07),
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    latestFoodEntry!['foodName'] ?? "Unknown",
+                                    style: TextStyle(
+                                      fontSize: scaled(screenWidth * 0.07),
+                                      fontWeight: FontWeight.bold,
+                                      color: BlackText(context),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines:
-                                      1, // Limit to 1 line to save vertical space
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                SizedBox(height: scaled(screenHeight * 0.005)),
-                                Text(
-                                  "Sugar Content:",
+                                  SizedBox(height: scaled(screenHeight * 0.005)),
+                                  Text(
+                                    "Sugar Content:",
+                                    style: TextStyle(
+                                      fontSize: scaled(screenWidth * 0.04),
+                                      color: BlackText(context).withOpacity(0.54),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else
+                              Container(
+                                height: scaled(screenHeight * 0.08),
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  "No history available",
                                   style: TextStyle(
                                     fontSize: scaled(screenWidth * 0.04),
-                                    color: Colors.black54,
+                                    fontStyle: FontStyle.italic,
+                                    color: BlackText(context).withOpacity(0.5),
                                   ),
                                 ),
-                              ],
-                            )
-                          else
-                            Container(
-                              height: scaled(screenHeight * 0.08),
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                "No history available",
-                                style: TextStyle(
-                                  fontSize: scaled(screenWidth * 0.04),
-                                  fontStyle: FontStyle.italic,
-                                  color: Colors.grey,
-                                ),
                               ),
-                            ),
                         ],
                       ),
                     ),
 
-                    // Percentage indicator section
+                    // Sugar percentage visualization
                     Container(
                       width: screenWidth * 0.25,
                       child: Column(
-                        mainAxisSize:
-                            MainAxisSize.min, // Use minimum space needed
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           if (!isLoadingFoodEntry &&
@@ -592,13 +582,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             Container(
                               margin: EdgeInsets.only(
                                   top: scaled(screenHeight * 0.005)),
-                              width: scaled(screenWidth * 0.1), // Smaller size
-                              height: scaled(screenWidth * 0.1), // Smaller size
+                              width: scaled(screenWidth * 0.1),
+                              height: scaled(screenWidth * 0.1),
                               child: CircularProgressIndicator(
                                 value: sugarPercentage! / 100,
-                                strokeWidth: scaled(
-                                    screenWidth * 0.01), // Thinner stroke
-                                backgroundColor: Colors.grey.withOpacity(0.3),
+                                strokeWidth: scaled(screenWidth * 0.01),
+                                backgroundColor: BlackText(context).withOpacity(0.3),
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                     sugarColor ?? Colors.purple),
                               ),
@@ -612,7 +601,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ),
                           if (latestFoodEntry == null ||
                               sugarPercentage == null)
-                            Text("No data"),
+                            Text(
+                              "No data",
+                              style: TextStyle(
+                                  color: BlackText(context)
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -645,7 +639,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       MaterialPageRoute(
                           builder: (context) => ScanOrTypeScreen()),
                     );
-                    // Refresh data when returning from ScanOrTypeScreen
+                    // Refresh data when returning
                     _loadLatestFoodEntry();
                   },
                   style: ElevatedButton.styleFrom(
@@ -673,16 +667,66 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
             SizedBox(height: scaled(screenHeight * 0.03)),
 
-            // Eat Healthy Section (no change needed)
+            // Daily Consumption Button
+            Center(
+              child: Container(
+                width: screenWidth * 0.7,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(scaled(24)),
+                  color: Colors.purple,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.purple.withOpacity(0.3),
+                      blurRadius: scaled(8),
+                      offset: Offset(0, scaled(4)),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => DailySugarTracker()),
+                    );
+                    // Refresh data when returning
+                    _loadLatestFoodEntry();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(scaled(24)),
+                    ),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: scaled(screenWidth * 0.05),
+                      vertical: scaled(screenHeight * 0.02),
+                    ),
+                  ),
+                  child: Text(
+                    "My Daily consumption",
+                    style: TextStyle(
+                      fontSize: scaled(screenWidth * 0.045),
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            SizedBox(height: scaled(screenHeight * 0.03)),
+
+            // Eat Healthy Section with motivational quotes
             Container(
               width: double.infinity,
               padding: EdgeInsets.all(scaled(16)),
               decoration: BoxDecoration(
-                color: Colors.transparent, // Made transparent
+                color: Colors.white.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(scaled(12)),
                 border: Border.all(
-                  color: Colors.white,
-                  width: 1.0, // Tiny white border
+                  color: BlackText(context),
+                  width: 1.0,
                 ),
               ),
               child: Column(
@@ -696,13 +740,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         style: TextStyle(
                           fontSize: scaled(screenWidth * 0.045),
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: BlackText(context),
                         ),
                       ),
                       IconButton(
                         icon: Icon(
                           Icons.refresh_rounded,
-                          color: Colors.white,
+                          color: BlackText(context),
                           size: scaled(screenWidth * 0.05),
                         ),
                         padding: EdgeInsets.zero,
@@ -725,10 +769,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: Text(
                         currentQuote,
                         style: TextStyle(
-                          fontSize: scaled(screenWidth *
-                              0.04), // Slightly smaller to prevent overflow
+                          fontSize: scaled(screenWidth * 0.04),
                           fontStyle: FontStyle.italic,
-                          color: Colors.white,
+                          color: BlackText(context),
                           height: 1.5,
                         ),
                         textAlign: TextAlign.center,
@@ -746,6 +789,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  // Landscape layout UI builder
   Widget _buildLandscapeLayout(BuildContext context, Size size) {
     final screenWidth = size.width;
     final screenHeight = size.height;
@@ -770,23 +814,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           context,
                           MaterialPageRoute(builder: (context) => History()),
                         );
-                        // Refresh data when returning from History screen
+                        // Refresh data when returning
                         _loadLatestFoodEntry();
                       },
                       child: Container(
                         width: double.infinity,
-                        // Add extra padding at the bottom to prevent overflow
                         padding: EdgeInsets.fromLTRB(
                           scaled(screenWidth * 0.03),
                           scaled(screenWidth * 0.03),
                           scaled(screenWidth * 0.03),
-                          scaled(screenWidth * 0.03 +
-                              20), // Add extra 20 pixels to bottom padding
+                          scaled(screenWidth * 0.03 + 20),
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: BackgroundAppBar(context),
                           borderRadius:
-                              BorderRadius.circular(scaled(screenWidth * 0.02)),
+                          BorderRadius.circular(scaled(screenWidth * 0.02)),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.grey.withOpacity(0.3),
@@ -796,8 +838,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ],
                         ),
                         child: Row(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start, // Align to top
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               flex: 3,
@@ -817,7 +858,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   ),
                                   SizedBox(height: scaled(screenHeight * 0.01)),
 
-                                  // Use stored state
+                                  // Food entry data display
                                   if (isLoadingFoodEntry)
                                     Container(
                                       height: scaled(screenHeight * 0.06),
@@ -835,62 +876,60 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       ),
                                     )
                                   else if (latestFoodEntry != null)
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          latestFoodEntry!['foodName'] ??
-                                              "Unknown",
-                                          style: TextStyle(
-                                            fontSize:
-                                                scaled(screenWidth * 0.035),
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black,
+                                      Column(
+                                        crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            latestFoodEntry!['foodName'] ??
+                                                "Unknown",
+                                            style: TextStyle(
+                                              fontSize:
+                                              scaled(screenWidth * 0.035),
+                                              fontWeight: FontWeight.bold,
+                                              color: BlackText(context),
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          maxLines:
-                                              1, // Limit to 1 line to save space
+                                          SizedBox(
+                                              height:
+                                              scaled(screenHeight * 0.005)),
+                                          Text(
+                                            "Sugar Content:",
+                                            style: TextStyle(
+                                              fontSize:
+                                              scaled(screenWidth * 0.02),
+                                              color: BlackText(context).withOpacity(0.54),
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    else
+                                      Container(
+                                        height: scaled(screenHeight * 0.06),
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          "No history available",
+                                          style: TextStyle(
+                                            fontSize: scaled(screenWidth * 0.025),
+                                            fontStyle: FontStyle.italic,
+                                            color: BlackText(context).withOpacity(0.5),
+                                          ),
+                                          maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        SizedBox(
-                                            height:
-                                                scaled(screenHeight * 0.005)),
-                                        Text(
-                                          "Sugar Content:",
-                                          style: TextStyle(
-                                            fontSize:
-                                                scaled(screenWidth * 0.02),
-                                            color: Colors.black54,
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  else
-                                    Container(
-                                      height: scaled(screenHeight * 0.06),
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        "No history available",
-                                        style: TextStyle(
-                                          fontSize: scaled(screenWidth * 0.025),
-                                          fontStyle: FontStyle.italic,
-                                          color: Colors.grey,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
                                 ],
                               ),
                             ),
 
-                            // Percentage indicator section - fixed
+                            // Sugar percentage visualization
                             Container(
-                              width: screenWidth * 0.15, // Fixed width
+                              width: screenWidth * 0.15,
                               child: Column(
-                                mainAxisSize: MainAxisSize
-                                    .min, // Use minimum vertical space
+                                mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   if (!isLoadingFoodEntry &&
@@ -913,19 +952,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     Container(
                                       margin: EdgeInsets.only(
                                           top: scaled(screenHeight * 0.005)),
-                                      width: scaled(screenWidth *
-                                          0.05), // Smaller for landscape
-                                      height: scaled(screenWidth *
-                                          0.05), // Smaller for landscape
+                                      width: scaled(screenWidth * 0.05),
+                                      height: scaled(screenWidth * 0.05),
                                       child: CircularProgressIndicator(
                                         value: sugarPercentage! / 100,
-                                        strokeWidth: scaled(screenWidth *
-                                            0.005), // Thinner stroke
-                                        backgroundColor:
-                                            Colors.grey.withOpacity(0.3),
+                                        strokeWidth: scaled(screenWidth * 0.005),
+                                        backgroundColor: BlackText(context).withOpacity(0.3),
                                         valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                                sugarColor ?? Colors.purple),
+                                        AlwaysStoppedAnimation<Color>(
+                                            sugarColor ?? Colors.purple),
                                       ),
                                     ),
                                   if (isLoadingFoodEntry)
@@ -933,8 +968,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       height: scaled(screenHeight * 0.04),
                                       width: scaled(screenHeight * 0.04),
                                       child: CircularProgressIndicator(
-                                        strokeWidth:
-                                            scaled(screenWidth * 0.005),
+                                        strokeWidth: scaled(screenWidth * 0.005),
                                       ),
                                     ),
                                   if (foodEntryError != null)
@@ -942,10 +976,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       'Error',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: BlackText(context)),
                                     ),
                                   if (latestFoodEntry == null ||
                                       sugarPercentage == null)
-                                    Text("No data"),
+                                    Text(
+                                      "No data",
+                                      style: TextStyle(color: BlackText(context)),
+                                    ),
                                 ],
                               ),
                             ),
@@ -953,14 +991,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                       )),
 
-                  SizedBox(height: scaled(screenHeight * 0.03)),
+                  SizedBox(height: scaled(screenHeight * 0.08)),
 
                   // Track New Food Button
                   Center(
                     child: Container(
                       width: (screenWidth / 2) * 0.7,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(scaled(20)),
+                        borderRadius: BorderRadius.circular(scaled(50)),
                         color: Colors.purple,
                         boxShadow: [
                           BoxShadow(
@@ -984,15 +1022,64 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           backgroundColor: Colors.purple,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(scaled(20)),
+                            borderRadius: BorderRadius.circular(scaled(50)),
                           ),
                           padding: EdgeInsets.symmetric(
                             horizontal: scaled(screenWidth * 0.03),
-                            vertical: scaled(screenHeight * 0.02),
+                            vertical: scaled(screenHeight * 0.08),
                           ),
                         ),
                         child: Text(
                           "Track New Food",
+                          style: TextStyle(
+                            fontSize: scaled(screenWidth * 0.025),
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: scaled(screenHeight * 0.06)),
+
+                  // Daily Sugar Consumption Button
+                  Center(
+                    child: Container(
+                      width: (screenWidth / 2) * 0.7,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(scaled(50)),
+                        color: Colors.purple,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.purple.withOpacity(0.3),
+                            blurRadius: scaled(6),
+                            offset: Offset(0, scaled(3)),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => DailySugarTracker()),
+                          );
+                          // Refresh data when returning
+                          _loadLatestFoodEntry();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(scaled(50)),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: scaled(screenWidth * 0.03),
+                            vertical: scaled(screenHeight * 0.08),
+                          ),
+                        ),
+                        child: Text(
+                          "My Daily consumption",
                           style: TextStyle(
                             fontSize: scaled(screenWidth * 0.025),
                             color: Colors.white,
@@ -1014,11 +1101,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 margin: EdgeInsets.only(top: scaled(screenHeight * 0.02)),
                 height: screenHeight * 0.75,
                 decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  borderRadius:
-                      BorderRadius.circular(scaled(screenWidth * 0.02)),
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(scaled(screenWidth * 0.02)),
                   border: Border.all(
-                    color: Colors.white,
+                    color: BlackText(context),
                     width: 1.0,
                   ),
                 ),
@@ -1035,13 +1121,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             style: TextStyle(
                               fontSize: scaled(screenWidth * 0.03),
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: BlackText(context),
                             ),
                           ),
                           IconButton(
                             icon: Icon(
                               Icons.refresh_rounded,
-                              color: Colors.white,
+                              color: BlackText(context),
                               size: scaled(screenWidth * 0.03),
                             ),
                             padding: EdgeInsets.zero,
@@ -1049,9 +1135,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             onPressed: () {
                               _clearSavedQuotes();
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content:
-                                        Text("Quotes cleared successfully!")),
+                                SnackBar(content: Text("Quotes cleared successfully!")),
                               );
                             },
                           ),
@@ -1068,7 +1152,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               style: TextStyle(
                                 fontSize: scaled(screenWidth * 0.025),
                                 fontStyle: FontStyle.italic,
-                                color: Colors.white,
+                                color: BlackText(context),
                                 height: 1.5,
                               ),
                               textAlign: TextAlign.center,

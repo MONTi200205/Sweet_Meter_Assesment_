@@ -6,13 +6,18 @@ import 'ProcessingApi.dart';
 import 'home_screen.dart';
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 
+/// A screen that provides barcode scanning functionality for food products
+/// Allows users to scan product barcodes and sends the results for processing
 class BarcodeScanner extends StatefulWidget {
   @override
   _BarcodeScannerState createState() => _BarcodeScannerState();
 }
 
 class _BarcodeScannerState extends State<BarcodeScanner> {
+  // Tracks the current barcode scan result
   String _scanBarcode = 'Scan a barcode';
+
+  // Indicates if scanning is in progress
   bool _isScanning = false;
 
   @override
@@ -20,27 +25,30 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
     super.initState();
   }
 
-  // Platform messages are asynchronous, so we initialize in an async method.
+  /// Handles the barcode scanning process
+  ///
+  /// Uses the device camera to scan barcodes and processes the result
+  /// Including error handling and navigation to the processing screen
   Future<void> scanBarcodeNormal() async {
     String barcodeScanRes;
 
-    // Platform messages may fail, so we use a try/catch PlatformException.
+    // Platform messages may fail, so we use a try/catch PlatformException
     try {
       setState(() {
         _isScanning = true;
       });
 
+      // Initiate the barcode scanner with customized UI colors
       barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
           '#ff6666', 'Cancel', true, ScanMode.BARCODE);
 
       if (barcodeScanRes != '-1') {
-        // -1 means user canceled the scan
-        // Valid barcode scanned
+        // Valid barcode scanned (-1 indicates user cancellation)
         setState(() {
           _scanBarcode = barcodeScanRes;
         });
       } else {
-        // User canceled
+        // User canceled the scanning process
         setState(() {
           _scanBarcode = 'Scan canceled';
         });
@@ -51,9 +59,7 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
       barcodeScanRes = 'Error: $e';
     }
 
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
+    // Prevent setState calls if widget is disposed during async operation
     if (!mounted) return;
 
     setState(() {
@@ -61,7 +67,7 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
       _scanBarcode = barcodeScanRes;
     });
 
-    // If we got a valid barcode, navigate to processing
+    // Process valid barcode results by navigating to processing screen
     if (barcodeScanRes != '-1' &&
         barcodeScanRes != 'Scan canceled' &&
         !barcodeScanRes.startsWith('Error:') &&
@@ -70,6 +76,9 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
     }
   }
 
+  /// Navigates to the food processing screen with the scanned barcode
+  ///
+  /// @param barcode The scanned barcode to be processed
   void navigateToProcessing(String barcode) {
     Navigator.push(
       context,
@@ -89,14 +98,14 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
 
     return Stack(
       children: [
-        // Background Color
+        // Background color layer
         Container(
           width: double.infinity,
           height: double.infinity,
           color: Background(context),
         ),
 
-        // Background Image Overlay
+        // Background image with overlay for visual appeal
         Container(
           width: double.infinity,
           height: double.infinity,
@@ -112,13 +121,16 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
           ),
         ),
 
+        // Main content scaffold
         Scaffold(
           backgroundColor: Background(context),
           appBar: AppBar(
+            // Back button to return to previous screen
             leading: IconButton(
               icon: Icon(Icons.arrow_back, color: IconColor(context)),
               onPressed: () => Navigator.pop(context),
             ),
+            // Home button for direct navigation to home screen
             actions: [
               IconButton(
                 icon: Icon(Icons.home, color: IconColor(context)),
@@ -139,6 +151,7 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
+                    // Screen title
                     Text(
                       'Scan Product Barcode',
                       textAlign: TextAlign.center,
@@ -151,7 +164,7 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
                     SizedBox(height: screenHeight * 0.01),
                     Divider(color: Colors.purple, thickness: 1),
 
-                    // Barcode display area
+                    // Barcode result display container
                     Container(
                       width: screenWidth * 0.8,
                       padding: EdgeInsets.all(20),
@@ -161,12 +174,14 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
                       ),
                       child: Column(
                         children: [
+                          // Barcode icon
                           Icon(
                             Icons.qr_code,
                             size: 64,
                             color: Colors.purple,
                           ),
                           SizedBox(height: 10),
+                          // Label for scanned barcode
                           Text(
                             'Scanned Barcode:',
                             style: TextStyle(
@@ -176,6 +191,7 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
                             ),
                           ),
                           SizedBox(height: 5),
+                          // Barcode value display with conditional text
                           Text(
                             _scanBarcode == '-1'
                                 ? 'No barcode scanned'
@@ -192,7 +208,7 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
 
                     SizedBox(height: screenHeight * 0.03),
 
-                    // Scan button
+                    // Scan initiation button - disabled during active scanning
                     ElevatedButton.icon(
                       onPressed: _isScanning ? null : scanBarcodeNormal,
                       icon: Icon(Icons.qr_code_scanner, color: Colors.white),
@@ -214,13 +230,13 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
 
                     SizedBox(height: screenHeight * 0.02),
 
-                    // Submit button
+                    // Submit button - only enabled with valid barcode
                     ElevatedButton(
                       onPressed: (_scanBarcode != 'Scan a barcode' &&
-                              _scanBarcode != '-1' &&
-                              _scanBarcode != 'Scan canceled' &&
-                              !_scanBarcode.startsWith('Error:') &&
-                              !_scanBarcode.startsWith('Failed'))
+                          _scanBarcode != '-1' &&
+                          _scanBarcode != 'Scan canceled' &&
+                          !_scanBarcode.startsWith('Error:') &&
+                          !_scanBarcode.startsWith('Failed'))
                           ? () => navigateToProcessing(_scanBarcode)
                           : null,
                       style: ElevatedButton.styleFrom(
@@ -240,6 +256,7 @@ class _BarcodeScannerState extends State<BarcodeScanner> {
                       ),
                     ),
 
+                    // Loading indicator displayed during scanning
                     if (_isScanning)
                       CircularProgressIndicator(color: Colors.purple),
                   ],

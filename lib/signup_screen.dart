@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 
+// Screen for user registration with email verification
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
 
@@ -10,11 +11,13 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  // Controllers for form fields
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
 
+  // Handles user registration and email verification flow
   Future<void> _signUp() async {
     setState(() {
       _isLoading = true;
@@ -24,6 +27,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
+    // Validate password match
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Passwords do not match")),
@@ -35,20 +39,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     try {
-      // Create the user account
+      // Create the user account in Firebase
       UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Send email verification
+      // Send verification email to the user
       await userCredential.user!.sendEmailVerification();
 
       setState(() {
         _isLoading = false;
       });
 
-      // Show verification instructions dialog
+      // Show verification instructions
       _showVerificationDialog();
 
     } catch (e) {
@@ -62,6 +66,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  // Dialog to inform users about email verification requirement
   void _showVerificationDialog() {
     showDialog(
       context: context,
@@ -96,7 +101,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Get screen size and orientation
     final size = MediaQuery.of(context).size;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
@@ -104,7 +108,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // Background Image
+          // Background image
           Container(
             width: size.width,
             height: size.height,
@@ -115,7 +119,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
           ),
-          // Purple Gradient Overlay
+          // Purple gradient overlay for visual aesthetics
           Container(
             width: size.width,
             height: size.height,
@@ -128,17 +132,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
           ),
+          // Dark mode compatibility layer
           Container(
             width: size.width,
             height: size.height,
             color: Tinting(context),
           ),
-          // Main Content - Choose layout based on orientation
+          // Responsive layout based on device orientation
           isLandscape
               ? _buildLandscapeLayout(context, size)
               : _buildPortraitLayout(context, size),
 
-          // Loading indicator
+          // Loading overlay during authentication
           if (_isLoading)
             Container(
               color: Colors.black.withOpacity(0.5),
@@ -153,7 +158,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Portrait layout
+  // Portrait layout optimized for vertical screens
   Widget _buildPortraitLayout(BuildContext context, Size size) {
     return SafeArea(
       child: SingleChildScrollView(
@@ -162,7 +167,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: Column(
             children: [
               SizedBox(height: size.height * 0.05),
-              // Title
+              // App title
               Center(
                 child: Text(
                   "SWEET METER",
@@ -175,7 +180,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
               SizedBox(height: size.height * 0.05),
-              // Form fields
+              // Registration form
               _buildSignUpForm(context, size, isPortrait: true),
               SizedBox(height: size.height * 0.05),
             ],
@@ -185,7 +190,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Landscape layout - fixing bottom overflow
+  // Landscape layout with two-column design
   Widget _buildLandscapeLayout(BuildContext context, Size size) {
     return SafeArea(
       child: SingleChildScrollView(
@@ -198,36 +203,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
           child: Column(
             children: [
-              // Title - bigger in landscape
+              // App title with larger font for landscape
               Padding(
                 padding: EdgeInsets.only(bottom: size.height * 0.02),
                 child: Text(
                   "SWEET METER",
                   style: TextStyle(
                     fontFamily: 'Agbalumo',
-                    fontSize: size.width * 0.12, // Bigger font in landscape
+                    fontSize: size.width * 0.12,
                     fontWeight: FontWeight.bold,
                     color: Colors.white.withOpacity(0.9),
                   ),
                 ),
               ),
 
-              // Add padding to push content down
+              // Vertical spacing
               SizedBox(height: size.height * 0.15),
 
-              // Main content with bottom margin to prevent overflow
+              // Two-column layout
               Padding(
                 padding: EdgeInsets.only(bottom: size.height * 0.02),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Sign up form on the left
+                    // Registration form column
                     Expanded(
                       flex: 6,
                       child: _buildCompactSignUpForm(context, size),
                     ),
                     SizedBox(width: size.width * 0.04),
-                    // Info panel on the right
+                    // Welcome information column
                     Expanded(
                       flex: 4,
                       child: _buildCompactInfoPanel(context, size),
@@ -242,13 +247,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Compact sign-up form for landscape orientation
+  // Compact sign-up form optimized for landscape mode
   Widget _buildCompactSignUpForm(BuildContext context, Size size) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Email TextField
+        // Email field
         TextField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
@@ -268,7 +273,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
         SizedBox(height: size.height * 0.008),
-        // Password TextField
+        // Password field
         TextField(
           controller: _passwordController,
           obscureText: true,
@@ -288,7 +293,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
         SizedBox(height: size.height * 0.008),
-        // Confirm Password TextField
+        // Password confirmation field
         TextField(
           controller: _confirmPasswordController,
           obscureText: true,
@@ -308,7 +313,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
         SizedBox(height: size.height * 0.012),
-        // Sign-Up Button
+        // Sign up button
         SizedBox(
           width: size.width * 0.25,
           height: size.height * 0.06,
@@ -326,7 +331,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Compact info panel for landscape with proper welcome message
+  // Welcome message and additional options panel for landscape mode
   Widget _buildCompactInfoPanel(BuildContext context, Size size) {
     return Container(
       padding: EdgeInsets.all(size.height * 0.015),
@@ -339,12 +344,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Welcome icon
           Icon(
             Icons.person_add_rounded,
             color: Colors.white,
             size: size.width * 0.025,
           ),
           SizedBox(height: size.height * 0.008),
+          // Panel title
           Text(
             "Join Us!",
             style: TextStyle(
@@ -354,6 +361,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ),
           SizedBox(height: size.height * 0.008),
+          // Welcome message explaining the signup process
           Text(
             "Welcome to Sweet Meter! Create your account to track preferences and personalize your experience. We'll send a verification email to confirm your account.",
             style: TextStyle(
@@ -363,12 +371,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
             textAlign: TextAlign.center,
           ),
           SizedBox(height: size.height * 0.015),
-          // Divider
+          // Visual divider
           Divider(
             thickness: 1,
             color: Colors.white24,
           ),
           SizedBox(height: size.height * 0.008),
+          // Login alternative message
           Text(
             "Already have an account?",
             style: TextStyle(
@@ -378,7 +387,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             textAlign: TextAlign.center,
           ),
           SizedBox(height: size.height * 0.008),
-          // Login button
+          // Navigate to login button
           SizedBox(
             width: double.infinity,
             height: size.height * 0.06,
@@ -403,12 +412,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Sign-up form - for portrait mode
+  // Standard sign-up form used in portrait mode
   Widget _buildSignUpForm(BuildContext context, Size size, {required bool isPortrait}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Email TextField
+        // Email field
         TextField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
@@ -428,7 +437,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
         SizedBox(height: isPortrait ? size.height * 0.02 : size.height * 0.01),
-        // Password TextField
+        // Password field
         TextField(
           controller: _passwordController,
           obscureText: true,
@@ -448,7 +457,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
         SizedBox(height: isPortrait ? size.height * 0.02 : size.height * 0.01),
-        // Confirm Password TextField
+        // Password confirmation field
         TextField(
           controller: _confirmPasswordController,
           obscureText: true,
@@ -468,7 +477,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
         SizedBox(height: isPortrait ? size.height * 0.04 : size.height * 0.02),
-        // Sign-Up Button
+        // Sign up button
         SizedBox(
           width: isPortrait ? size.width * 0.6 : size.width * 0.3,
           height: isPortrait ? size.height * 0.06 : size.height * 0.1,
@@ -483,7 +492,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
         SizedBox(height: isPortrait ? size.height * 0.02 : size.height * 0.01),
-        // Already Have an Account Button (portrait only)
+        // Login alternative (portrait only)
         if (isPortrait)
           TextButton(
             onPressed: () {
