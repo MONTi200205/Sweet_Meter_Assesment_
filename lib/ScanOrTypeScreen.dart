@@ -1,33 +1,49 @@
+/// ScanOrTypeScreen.dart
+///
+/// This file contains the UI and logic for the screen that allows users to choose
+/// between typing food information, scanning food, or using a barcode scanner.
+/// The screen presents three options via toggle buttons and navigates to the
+/// appropriate screen based on the user's selection.
+
 import 'package:flutter/material.dart';
 import 'TypeFood.dart';
 import 'ScanFood.dart';
 import 'BarcodeScanner.dart'; // Import the new BarcodeScanner file
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 
+/// A StatefulWidget that allows users to choose between typing food information,
+/// scanning food, or using a barcode scanner.
 class ScanOrTypeScreen extends StatefulWidget {
   @override
   _ScanOrTypeScreenState createState() => _ScanOrTypeScreenState();
 }
 
+/// The state class for the ScanOrTypeScreen.
+/// Manages the selected option state and builds the UI.
 class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
-  // 0 = Type, 1 = Scan, 2 = Barcode
+  /// Selected option indicator: 0 = Type, 1 = Scan, 2 = Barcode
   int selectedOption = 0;
 
+  /// Builds the UI for the ScanOrTypeScreen.
+  ///
+  /// @param context The BuildContext for this widget
+  /// @return A Widget representing the complete screen UI
   @override
   Widget build(BuildContext context) {
+    // Get screen dimensions for responsive layout
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Stack(
       children: [
-        // Background Color
+        // Background Color layer
         Container(
           width: double.infinity,
           height: double.infinity,
           color: Background(context),
         ),
 
-        // Background Image Overlay
+        // Background Image Overlay with darkening effect
         Container(
           width: double.infinity,
           height: double.infinity,
@@ -43,6 +59,7 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
           ),
         ),
 
+        // Main Scaffold containing the app UI elements
         Scaffold(
           backgroundColor: Background(context),
           appBar: AppBar(
@@ -57,6 +74,7 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Title text explaining the available options
                 const Text(
                   "You can Either \n Type, Scan or Use Barcode",
                   textAlign: TextAlign.center,
@@ -69,6 +87,8 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
                 SizedBox(height: screenHeight * 0.04),
                 Divider(color: Colors.purple, thickness: 1),
                 SizedBox(height: screenHeight * 0.04),
+
+                // Toggle buttons for selecting the input method
                 ToggleButtons(
                   isSelected: [
                     selectedOption == 0,
@@ -81,6 +101,9 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
                   selectedColor: Colors.white,
                   color: BlackText(context),
                   borderColor: Colors.purple,
+                  /// Updates the selected option when a toggle button is pressed
+                  ///
+                  /// @param index The index of the button pressed (0=Type, 1=Scan, 2=Barcode)
                   onPressed: (int index) {
                     setState(() {
                       selectedOption = index;
@@ -97,7 +120,13 @@ class _ScanOrTypeScreenState extends State<ScanOrTypeScreen> {
                   ],
                 ),
                 Spacer(),
+
+                // Navigation button to proceed based on selected option
                 ElevatedButton(
+                  /// Navigates to the appropriate screen based on the selected option
+                  /// Type (0) -> TypeFood
+                  /// Scan (1) -> ScanFood
+                  /// Barcode (2) -> BarcodeScanner
                   onPressed: () {
                     if (selectedOption == 0) {
                       // Navigate to Type Food screen

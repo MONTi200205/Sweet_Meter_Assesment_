@@ -5,12 +5,31 @@ import 'result.dart';
 import 'home_screen.dart';
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 
+/// Screen for processing food search queries and retrieving nutritional information
+///
+/// This widget handles different input methods (text search, barcode scanning, image analysis)
+/// to retrieve sugar content information from the OpenFoodFacts database.
+/// It shows appropriate loading states, search results, or error messages based on
+/// the search outcome.
 class Processing extends StatefulWidget {
+  /// Name of the food item to search for
   final String foodName;
-  final bool isBarcode; // Indicates if input is a barcode
-  final bool isImage; // Indicates if input is an image
-  final String? imagePath; // Path to the image file if using image analysis
 
+  /// Whether the input is a barcode scan
+  final bool isBarcode;
+
+  /// Whether the input is from an image analysis
+  final bool isImage;
+
+  /// File path to the analyzed image (if applicable)
+  final String? imagePath;
+
+  /// Creates a Processing screen instance
+  ///
+  /// @param foodName The name or barcode of the food to process
+  /// @param isBarcode Whether the input is a barcode instead of a food name
+  /// @param isImage Whether the input is coming from an image analysis
+  /// @param imagePath Path to the image file if using image analysis
   Processing({
     required this.foodName,
     this.isBarcode = false,
@@ -22,23 +41,37 @@ class Processing extends StatefulWidget {
   _ProcessingState createState() => _ProcessingState();
 }
 
+/// State class for the Processing screen
+///
+/// Manages API calls, search processing, and UI state transitions
 class _ProcessingState extends State<Processing> {
+  /// Sugar content information retrieved from API
   String? sugarLevel;
+
+  /// Number of API call attempts made
   int retryCount = 0;
+
+  /// Maximum number of retry attempts for API calls
   final int maxRetries = 2;
+
+  /// Whether the screen is in a loading state
   bool isLoading = true;
+
+  /// List of search results from OpenFoodFacts
   List<Product>? searchResults;
+
+  /// Error message to display if something goes wrong
   String? errorMessage;
 
   @override
   void initState() {
     super.initState();
-    // Set up the OpenFoodFacts configuration
+    // Set up the OpenFoodFacts configuration with app identifier
     OpenFoodAPIConfiguration.userAgent = UserAgent(
       name: 'Sweet Meter Assessment',
     );
 
-    // Process based on input type
+    // Choose processing method based on input type
     if (widget.isBarcode) {
       // Directly fetch product details by barcode
       fetchProductDetails(widget.foodName);
@@ -46,11 +79,17 @@ class _ProcessingState extends State<Processing> {
       // Process the food image
       processImageData(widget.imagePath!);
     } else {
-      // Standard search by food name - now gets results for selection
+      // Standard search by food name - returns results for selection
       fetchFoodSearchResults(widget.foodName);
     }
   }
 
+  /// Processes an image to identify food items
+  ///
+  /// Currently a placeholder implementation that defaults to text search
+  /// In a real implementation, this would use image recognition to identify food
+  ///
+  /// @param imagePath Path to the image file to process
   Future<void> processImageData(String imagePath) async {
     try {
       // Here you would implement image analysis logic
@@ -74,28 +113,35 @@ class _ProcessingState extends State<Processing> {
     }
   }
 
-  // New method to fetch search results for selection
+  /// Fetches search results from OpenFoodFacts based on food name
+  ///
+  /// Searches the OpenFoodFacts database for matching products and
+  /// updates the UI with the results or an error message
+  ///
+  /// @param foodName The name of the food to search for
+  /// @param currentRetry Current retry attempt number for handling failures
   Future<void> fetchFoodSearchResults(String foodName, {int currentRetry = 0}) async {
     try {
-      // Create parameters for the search
+      // Create parameters for the search query
       final parameters = <Parameter>[
-        SearchTerms(terms: [foodName]),
+        SearchTerms(terms: [foodName]), // Search terms parameter
       ];
 
-      // Create the search configuration
+      // Create the search configuration with fields and language
       final configuration = ProductSearchQueryConfiguration(
         parametersList: parameters,
-        fields: [ProductField.ALL],
+        fields: [ProductField.ALL], // Request all fields for comprehensive data
         language: OpenFoodFactsLanguage.ENGLISH,
         version: ProductQueryVersion.v3,
       );
 
-      // Search for products with parameters in the correct order
+      // Search for products with the specified parameters
       final searchResult = await OpenFoodAPIClient.searchProducts(
         null, // First parameter is User? which can be null
         configuration, // Second parameter is the query configuration
       );
 
+      // Update UI state with search results
       setState(() {
         if (searchResult.products != null && searchResult.products!.isNotEmpty) {
           searchResults = searchResult.products;
@@ -120,18 +166,25 @@ class _ProcessingState extends State<Processing> {
     }
   }
 
-  // Process a selected product (either from search results or direct barcode)
+  /// Processes a product selected from search results
+  ///
+  /// Extracts nutritional information from the selected product
+  /// or fetches additional details if needed
+  ///
+  /// @param product The selected OpenFoodFacts product
   Future<void> processSelectedProduct(Product product) async {
     setState(() {
-      isLoading = true;
+      isLoading = true; // Show loading indicator while processing
     });
 
     if (product.nutriments != null) {
+      // If the product already has nutriment data, process it directly
       processNutriments(product.nutriments!);
     } else if (product.barcode != null) {
-      // If we don't have nutriment data, fetch by barcode
+      // If we don't have nutriment data but have a barcode, fetch by barcode
       await fetchProductDetails(product.barcode!);
     } else {
+      // If we can't get any nutriment data, show a message
       setState(() {
         sugarLevel = 'No product information available.';
         isLoading = false;
@@ -140,21 +193,29 @@ class _ProcessingState extends State<Processing> {
     }
   }
 
+  /// Fetches detailed product information by barcode
+  ///
+  /// Makes an API request to retrieve complete product details
+  /// and extracts nutrient information
+  ///
+  /// @param barcode The product barcode to look up
+  /// @param currentRetry Current retry attempt number
   Future<void> fetchProductDetails(String barcode, {int currentRetry = 0}) async {
     try {
-      // Get product by barcode
+      // Configure product query with the barcode
       final productQueryConfiguration = ProductQueryConfiguration(
         barcode,
         version: ProductQueryVersion.v3,
         language: OpenFoodFactsLanguage.ENGLISH,
-        fields: [ProductField.NUTRIMENTS],
+        fields: [ProductField.NUTRIMENTS], // Request nutriment data specifically
       );
 
-      // Call with correct parameter order
+      // Fetch product details from the API
       final productResult = await OpenFoodAPIClient.getProductV3(
         productQueryConfiguration,
       );
 
+      // Extract and process nutriment data if available
       if (productResult.product != null && productResult.product!.nutriments != null) {
         processNutriments(productResult.product!.nutriments!);
       } else {
@@ -165,13 +226,14 @@ class _ProcessingState extends State<Processing> {
         navigateToResult(widget.foodName);
       }
     } catch (e) {
-      // If we haven't hit our retry limit yet, try again
+      // Retry logic for transient failures
       if (currentRetry < maxRetries) {
-        // Wait a bit before retrying
+        // Wait before retrying to avoid overwhelming the API
         await Future.delayed(Duration(seconds: 1));
         return fetchProductDetails(barcode, currentRetry: currentRetry + 1);
       }
 
+      // Update UI with error message after exhausting retries
       setState(() {
         sugarLevel = 'An error occurred while fetching product details: $e';
         isLoading = false;
@@ -180,19 +242,26 @@ class _ProcessingState extends State<Processing> {
     }
   }
 
+  /// Extracts sugar content information from nutriment data
+  ///
+  /// Attempts to find sugar content using various approaches
+  /// to handle different data formats in the OpenFoodFacts API
+  ///
+  /// @param nutriments The nutriment data from the OpenFoodFacts API
   void processNutriments(Nutriments nutriments) {
     try {
       // Try to get sugar content using various approaches
       double? sugarsValue;
 
-      // Try to get sugars using the standard method
+      // Try to get sugars using the standard method first
       try {
         sugarsValue = nutriments.getValue(Nutrient.sugars, PerSize.oneHundredGrams);
       } catch (e) {
-        // If that fails, try to access the value directly from the map
+        // If standard method fails, try to access the value directly from the map
         final Map<String, dynamic>? nutrientsMap = nutriments.toJson();
         if (nutrientsMap != null) {
           // Try various potential key names for sugar content
+          // OpenFoodFacts data can be inconsistent in naming
           final possibleSugarKeys = [
             'sugars_100g',
             'sugars',
@@ -200,6 +269,7 @@ class _ProcessingState extends State<Processing> {
             'sugar'
           ];
 
+          // Check each possible key until we find a valid sugar value
           for (final key in possibleSugarKeys) {
             if (nutrientsMap.containsKey(key) && nutrientsMap[key] != null) {
               final value = nutrientsMap[key];
@@ -215,6 +285,7 @@ class _ProcessingState extends State<Processing> {
         }
       }
 
+      // Update the UI with the sugar information
       setState(() {
         if (sugarsValue != null) {
           sugarLevel = '${sugarsValue.toString()}g per 100g';
@@ -224,6 +295,7 @@ class _ProcessingState extends State<Processing> {
         isLoading = false;
       });
     } catch (e) {
+      // Handle any errors during nutriment processing
       setState(() {
         sugarLevel = 'Error processing nutriment data: $e';
         isLoading = false;
@@ -231,6 +303,9 @@ class _ProcessingState extends State<Processing> {
     }
   }
 
+  /// Navigates to the result screen with the processed information
+  ///
+  /// @param displayName The name of the food to display on the result screen
   void navigateToResult(String displayName) {
     Navigator.pushReplacement(
       context,
@@ -247,14 +322,14 @@ class _ProcessingState extends State<Processing> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Background Color
+        // Background color layer
         Container(
           width: double.infinity,
           height: double.infinity,
-          color: Background(context),
+          color: Background(context), // Uses the theme-aware background color
         ),
 
-        // Background Image Overlay
+        // Background image with overlay
         Container(
           width: double.infinity,
           height: double.infinity,
@@ -270,6 +345,7 @@ class _ProcessingState extends State<Processing> {
           ),
         ),
 
+        // Main UI content
         Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
@@ -290,16 +366,22 @@ class _ProcessingState extends State<Processing> {
             ],
             backgroundColor: Colors.transparent,
           ),
+          // Conditional UI based on current state
           body: isLoading
-              ? _buildLoadingView()
+              ? _buildLoadingView() // Show loading spinner during API requests
               : searchResults != null && !widget.isBarcode && !widget.isImage
-              ? _buildSearchResultsList()
-              : _buildErrorView(),
+              ? _buildSearchResultsList() // Show search results if available
+              : _buildErrorView(), // Show error view if something went wrong
         ),
       ],
     );
   }
 
+  /// Builds the loading state view with appropriate message
+  ///
+  /// Shows a spinner and contextual loading message based on input type
+  ///
+  /// @return Widget displaying the loading state
   Widget _buildLoadingView() {
     return Center(
       child: Column(
@@ -321,7 +403,14 @@ class _ProcessingState extends State<Processing> {
     );
   }
 
+  /// Builds the search results list view
+  ///
+  /// Shows a scrollable list of food products matching the search
+  /// with images and selectable items
+  ///
+  /// @return Widget displaying the search results
   Widget _buildSearchResultsList() {
+    // Show message if no results found
     if (searchResults == null || searchResults!.isEmpty) {
       return Center(
         child: Text(
@@ -332,8 +421,10 @@ class _ProcessingState extends State<Processing> {
       );
     }
 
+    // Build the list of search results
     return Column(
       children: [
+        // Header section
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
@@ -341,6 +432,7 @@ class _ProcessingState extends State<Processing> {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: BlackText(context)),
           ),
         ),
+        // Scrollable product list
         Expanded(
           child: ListView.builder(
             itemCount: searchResults!.length,
@@ -349,6 +441,7 @@ class _ProcessingState extends State<Processing> {
               return Card(
                 margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ListTile(
+                  // Product image if available
                   leading: product.imageFrontUrl != null && product.imageFrontUrl!.isNotEmpty
                       ? Image.network(
                     product.imageFrontUrl!,
@@ -358,11 +451,13 @@ class _ProcessingState extends State<Processing> {
                         Icon(Icons.image_not_supported, size: 40),
                   )
                       : Icon(Icons.food_bank, size: 40),
+                  // Product name and brand
                   title: Text(
                     product.productName ?? 'Unknown Product',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(product.brands ?? 'Unknown Brand'),
+                  // Handle product selection
                   onTap: () {
                     // When a product is selected, process it
                     navigateToResult(product.productName ?? widget.foodName);
@@ -377,6 +472,11 @@ class _ProcessingState extends State<Processing> {
     );
   }
 
+  /// Builds the error state view
+  ///
+  /// Shows an error message and a button to go back
+  ///
+  /// @return Widget displaying the error state
   Widget _buildErrorView() {
     return Center(
       child: Padding(

@@ -1,3 +1,8 @@
+/// MenuScreen.dart
+///
+/// A Flutter screen that provides a sliding menu with various user options including
+/// profile picture update, history management, UI scaling, and logout functionality.
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,14 +15,32 @@ import 'login_screen.dart';
 import 'home_screen.dart';
 import 'package:sweet_meter_assesment/utils/scaling_utils.dart';
 
-// Get current user email
+/// Gets the email of the currently authenticated user.
+/// Returns an empty string if no user is logged in.
 String currentUserEmail = FirebaseAuth.instance.currentUser?.email ?? '';
 
+/// A screen that displays a menu with user options and settings.
+///
+/// This menu provides options for profile management, data manipulation,
+/// application settings, and authentication controls.
 class MenuScreen extends StatelessWidget {
+  /// Callback function triggered when profile picture is updated.
+  /// 
+  /// @param onProfileUpdated Function that receives the URL of the updated profile picture
   final Function(String)? onProfileUpdated;
 
+  /// Creates a new MenuScreen.
+  ///
+  /// @param key Widget key for identification
+  /// @param onProfileUpdated Optional callback for profile picture updates
   const MenuScreen({Key? key, this.onProfileUpdated}) : super(key: key);
 
+  /// Builds the menu screen UI.
+  ///
+  /// Creates a sliding panel with a gradient header and menu options.
+  ///
+  /// @param context The build context
+  /// @return The widget tree for the menu screen
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,8 +51,7 @@ class MenuScreen extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.purple.withOpacity(
-                  0.9), // Same purple as home screen but with opacity
+              Colors.purple.withOpacity(0.9), // Same purple as home screen but with opacity
               Colors.purple.withOpacity(0.7),
             ],
           ),
@@ -41,7 +63,7 @@ class MenuScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // Header
+              // Header with menu title and close button
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -69,7 +91,7 @@ class MenuScreen extends StatelessWidget {
                 ),
               ),
 
-              // Menu Items
+              // Menu Items container with rounded corners
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -83,7 +105,7 @@ class MenuScreen extends StatelessWidget {
                   child: ListView(
                     padding: const EdgeInsets.only(top: 30),
                     children: [
-                      // Profile Section
+                      // Profile picture update option
                       _buildMenuItem(
                         context,
                         icon: Icons.account_circle,
@@ -95,7 +117,7 @@ class MenuScreen extends StatelessWidget {
 
                       _buildDivider(),
 
-                      // History Section
+                      // History deletion option
                       _buildMenuItem(
                         context,
                         icon: Icons.delete_outline,
@@ -107,7 +129,7 @@ class MenuScreen extends StatelessWidget {
 
                       _buildDivider(),
 
-                      // UI Scaling Section
+                      // UI scaling option with current setting
                       _buildMenuItem(
                         context,
                         icon: Icons.zoom_in,
@@ -119,7 +141,7 @@ class MenuScreen extends StatelessWidget {
 
                       _buildDivider(),
 
-                      // Logout Section
+                      // Logout option
                       _buildMenuItem(
                         context,
                         icon: Icons.logout,
@@ -139,14 +161,23 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
+  /// Builds a styled menu item with icon, title, subtitle, and tap action.
+  ///
+  /// @param context The build context
+  /// @param icon Icon to display for the menu item
+  /// @param title Primary text of the menu item
+  /// @param subtitle Secondary descriptive text
+  /// @param iconColor Color for the icon background
+  /// @param onTap Callback function when item is tapped
+  /// @return A ListTile widget styled as a menu item
   Widget _buildMenuItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color iconColor,
-    required VoidCallback onTap,
-  }) {
+      BuildContext context, {
+        required IconData icon,
+        required String title,
+        required String subtitle,
+        required Color iconColor,
+        required VoidCallback onTap,
+      }) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       leading: Container(
@@ -176,6 +207,9 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
+  /// Creates a styled divider for separating menu items.
+  ///
+  /// @return A Divider widget with specific styling
   Widget _buildDivider() {
     return Divider(
       height: 1,
@@ -186,13 +220,21 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
+  /// Gets the display name for the current UI scale factor.
+  ///
+  /// @return String representation of the scale ("Small", "Medium", or "Large")
   String _getScaleName() {
     if (globalScaleFactor <= 0.75) return "Small";
     if (globalScaleFactor <= 0.875) return "Medium";
     return "Large";
   }
 
-  // Profile Picture Update
+  /// Handles the profile picture update process.
+  ///
+  /// Opens the device gallery, uploads the selected image to Firebase Storage,
+  /// and updates the user's profile in Firestore.
+  ///
+  /// @param context The build context
   Future<void> _updateProfilePicture(BuildContext context) async {
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
@@ -200,7 +242,7 @@ class MenuScreen extends StatelessWidget {
     if (image != null) {
       File imageFile = File(image.path);
 
-      // Show loading
+      // Show loading indicator
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -211,7 +253,7 @@ class MenuScreen extends StatelessWidget {
 
       try {
         final downloadUrl =
-            await _uploadProfilePicture(currentUserEmail, imageFile);
+        await _uploadProfilePicture(currentUserEmail, imageFile);
 
         // Close loading dialog
         Navigator.pop(context);
@@ -236,7 +278,11 @@ class MenuScreen extends StatelessWidget {
     }
   }
 
-  // Upload profile picture to Firebase
+  /// Uploads a profile picture to Firebase Storage and saves the URL to Firestore.
+  ///
+  /// @param email The user's email as a unique identifier
+  /// @param imageFile The image file to upload
+  /// @return The download URL of the uploaded image, or null if upload failed
   Future<String?> _uploadProfilePicture(String email, File imageFile) async {
     try {
       print('Starting upload for email: $email');
@@ -283,27 +329,31 @@ class MenuScreen extends StatelessWidget {
     }
   }
 
-  // Delete history
+  /// Deletes the user's food tracking history from both local storage and Firestore.
+  ///
+  /// Shows a confirmation dialog before performing the deletion.
+  ///
+  /// @param context The build context
   Future<void> _deleteHistory(BuildContext context) async {
-    // Confirmation
+    // Confirmation dialog
     final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text("Delete History"),
-            content: Text(
-                "Are you sure you want to delete all your food tracking history? This action cannot be undone."),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text("Cancel"),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text("Delete", style: TextStyle(color: Colors.red)),
-              ),
-            ],
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Delete History"),
+        content: Text(
+            "Are you sure you want to delete all your food tracking history? This action cannot be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text("Cancel"),
           ),
-        ) ??
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    ) ??
         false;
 
     if (!confirmed) return;
@@ -318,7 +368,7 @@ class MenuScreen extends StatelessWidget {
     }
 
     try {
-      // Show loading
+      // Show loading indicator
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -327,7 +377,7 @@ class MenuScreen extends StatelessWidget {
         ),
       );
 
-      // Local storage
+      // Delete from local storage
       final prefs = await SharedPreferences.getInstance();
       final dataMapString = prefs.getString('userFoodData');
 
@@ -340,7 +390,7 @@ class MenuScreen extends StatelessWidget {
         }
       }
 
-      // Firebase
+      // Delete from Firebase
       await FirebaseFirestore.instance
           .collection('users')
           .doc(email)
@@ -359,15 +409,15 @@ class MenuScreen extends StatelessWidget {
     }
   }
 
-  // Replace the _showScalingDialog method in your menu_screen.dart file
-
-// Show UI scaling dialog
-  // Replace the entire _showScalingDialog method with this implementation
-
+  /// Shows a dialog for adjusting the UI scaling with a live preview.
+  ///
+  /// Users can select from Small, Medium, or Large scaling options,
+  /// and see a live preview of how the change will look.
+  ///
+  /// @param context The build context
   void _showScalingDialog(BuildContext context) {
-    // Force initial scale for the dialog
-    // This will show Medium selected by default
-    double tempScale = 0.875; // Always start with Medium selected in the dialog
+    // Force initial scale for the dialog to Medium selection
+    double tempScale = 0.875;
 
     showDialog(
       context: context,
@@ -380,6 +430,7 @@ class MenuScreen extends StatelessWidget {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Preview area showing text at the selected scale
                 Container(
                   margin: EdgeInsets.only(bottom: 24),
                   padding: EdgeInsets.all(16),
@@ -399,7 +450,7 @@ class MenuScreen extends StatelessWidget {
                   ),
                 ),
 
-                // More reliable button implementation
+                // Scale selection buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -476,13 +527,15 @@ class MenuScreen extends StatelessWidget {
               ],
             ),
             actions: [
+              // Cancel button - dismisses dialog without changes
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text("Cancel"),
               ),
+              // Apply button - saves selection and reloads app
               FilledButton(
                 onPressed: () async {
-                  print("Saving scale preference: $tempScale"); // Debug print
+                  print("Saving scale preference: $tempScale");
                   await saveScalePreference(tempScale);
                   Navigator.pop(context);  // Close dialog
                   Navigator.pop(context);  // Close menu
@@ -510,8 +563,13 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
-// You can remove the _scaleButton method since we're now using ElevatedButton directly
-
+  /// Creates a styled button for use in the scale selection dialog.
+  ///
+  /// @param text Text to display on the button
+  /// @param scale The scale value this button represents
+  /// @param isSelected Whether this button is currently selected
+  /// @param onTap Callback function when button is tapped
+  /// @return A styled GestureDetector widget functioning as a button
   Widget _scaleButton(
       String text, double scale, bool isSelected, VoidCallback onTap) {
     return GestureDetector(
@@ -533,34 +591,43 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
+  /// Gets the display name for a specified scale value.
+  ///
+  /// @param scale The numeric scale value
+  /// @return String representation of the scale ("Small", "Medium", or "Large")
   String _getScaleNameFromValue(double scale) {
     if (scale <= 0.75) return "Small";
     if (scale <= 0.875) return "Medium";
     return "Large";
   }
 
-  // Logout function
+  /// Handles the logout process with confirmation.
+  ///
+  /// Shows a confirmation dialog and signs the user out of Firebase Auth
+  /// if confirmed, then navigates to the login screen.
+  ///
+  /// @param context The build context
   void _logout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text("Logout"),
-            content: Text("Are you sure you want to logout?"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text("Cancel"),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.red,
-                ),
-                child: Text("Logout"),
-              ),
-            ],
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Logout"),
+        content: Text("Are you sure you want to logout?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text("Cancel"),
           ),
-        ) ??
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: Text("Logout"),
+          ),
+        ],
+      ),
+    ) ??
         false;
 
     if (!confirmed) return;
@@ -568,10 +635,10 @@ class MenuScreen extends StatelessWidget {
     try {
       await FirebaseAuth.instance.signOut();
 
-      // Navigate to login
+      // Navigate to login screen and clear navigation history
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => LoginScreen()),
-        (route) => false, // Remove all previous routes
+            (route) => false, // Remove all previous routes
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

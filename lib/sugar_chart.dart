@@ -1,12 +1,37 @@
+/// SugarChart.dart
+///
+/// A custom chart widget for visualizing daily sugar consumption data.
+/// This chart displays sugar intake trends over time using a combination
+/// of bar charts and line graphs with gradient styling.
+
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
+/// A widget that renders a customized chart for displaying sugar consumption data.
+///
+/// The chart combines bar graph elements with a trend line and data points,
+/// providing multiple visual representations of the data simultaneously.
 class SugarChart extends StatelessWidget {
+  /// The data to be displayed in the chart.
+  /// Each map should contain 'displayDate' and 'totalSugar' keys.
   final List<Map<String, dynamic>> dailyData;
+
+  /// The height of the chart in logical pixels.
   final double chartHeight;
+
+  /// The width of the chart in logical pixels.
   final double chartWidth;
+
+  /// Whether the chart is being displayed in landscape orientation.
+  /// Affects font sizing and other responsive elements.
   final bool isLandscape;
 
+  /// Creates a sugar consumption chart.
+  ///
+  /// @param dailyData List of maps containing sugar consumption data points.
+  /// @param chartHeight The height allocated for the chart.
+  /// @param chartWidth The width allocated for the chart.
+  /// @param isLandscape Whether the chart is being displayed in landscape mode.
   const SugarChart({
     Key? key,
     required this.dailyData,
@@ -15,6 +40,13 @@ class SugarChart extends StatelessWidget {
     this.isLandscape = false,
   }) : super(key: key);
 
+  /// Builds the chart widget tree.
+  ///
+  /// Shows a message when no data is available, otherwise renders
+  /// the chart using a CustomPaint widget with SugarChartPainter.
+  ///
+  /// @param context The build context.
+  /// @return The widget tree for this chart.
   @override
   Widget build(BuildContext context) {
     if (dailyData.isEmpty) {
@@ -40,15 +72,37 @@ class SugarChart extends StatelessWidget {
   }
 }
 
+/// A custom painter that renders the sugar chart visualization.
+///
+/// Handles the drawing of axes, gridlines, bars, data points,
+/// and connecting lines to create a comprehensive chart.
 class SugarChartPainter extends CustomPainter {
+  /// The data to be visualized in the chart.
   final List<Map<String, dynamic>> data;
+
+  /// Whether the chart is being displayed in landscape orientation.
   final bool isLandscape;
 
+  /// Creates a SugarChartPainter instance.
+  ///
+  /// @param data The consumption data to visualize.
+  /// @param isLandscape Whether the chart is in landscape orientation.
   SugarChartPainter({
     required this.data,
     this.isLandscape = false,
   });
 
+  /// Paints the chart onto the provided canvas.
+  ///
+  /// This method handles all the drawing operations for the chart including:
+  /// - Calculating scale and layout based on data and available space
+  /// - Drawing axes and gridlines
+  /// - Rendering bars with gradients
+  /// - Adding labels for axes and data points
+  /// - Drawing the trend line and data points
+  ///
+  /// @param canvas The canvas to draw on.
+  /// @param size The size of the canvas.
   @override
   void paint(Canvas canvas, Size size) {
     final double padding = size.width * 0.05;
@@ -90,7 +144,7 @@ class SugarChartPainter extends CustomPainter {
       yAxisPaint,
     );
 
-    // Draw horizontal gridlines
+    // Draw horizontal gridlines and y-axis labels
     final gridLinePaint = Paint()
       ..color = Colors.white.withOpacity(0.2)
       ..strokeWidth = 0.5;
@@ -207,7 +261,7 @@ class SugarChartPainter extends CustomPainter {
       }
     }
 
-    // Draw connecting line
+    // Draw connecting line between data points
     if (data.length > 1) {
       final linePaint = Paint()
         ..color = Colors.white.withOpacity(0.6)
@@ -232,7 +286,7 @@ class SugarChartPainter extends CustomPainter {
 
       canvas.drawPath(path, linePaint);
 
-      // Draw data points
+      // Draw data points as circles with borders
       final pointPaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.fill;
@@ -258,14 +312,27 @@ class SugarChartPainter extends CustomPainter {
     }
   }
 
+  /// Determines if the painter should be repainted.
+  ///
+  /// Always returns true to ensure the chart repaints when data changes.
+  ///
+  /// @param oldDelegate The previous painter instance.
+  /// @return Whether to repaint the chart.
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return true;
   }
 }
 
-// A widget that shows a preview of the chart to make layout design easier
+/// A helper widget that shows a preview of the chart with mock data.
+///
+/// This widget is used during development to quickly visualize the chart
+/// without needing to integrate it into the main application flow.
 class SugarChartPreview extends StatelessWidget {
+  /// Builds the preview widget with mock data.
+  ///
+  /// @param context The build context.
+  /// @return A scaffold containing the chart preview.
   @override
   Widget build(BuildContext context) {
     final mockData = [

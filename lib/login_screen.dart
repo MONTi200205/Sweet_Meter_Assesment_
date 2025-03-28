@@ -8,53 +8,61 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-// Handles Google Sign-In authentication flow for both web and mobile platforms
+/// Handles Google Sign-In authentication flow for both web and mobile platforms
+///
+/// Initiates the Google authentication process, retrieves user information,
+/// stores profile data in Firestore, and navigates to the home screen on success
+///
+/// @param context Current build context for navigation and displaying errors
+/// @return Future that completes when authentication flow is finished
 Future<void> signInWithGoogle(BuildContext context) async {
   try {
+    // Initialize GoogleSignIn with appropriate configuration based on platform
     GoogleSignIn googleSignIn;
 
     if (kIsWeb) {
       // Web-specific configuration with client ID
       googleSignIn = GoogleSignIn(
         clientId: '685238501821-ch9t81g9dvcdfcquv2vpispjkukqu941.apps.googleusercontent.com',
-        scopes: ['email', 'profile'],
+        scopes: ['email', 'profile'], // Request access to email and profile info
       );
     } else {
-      // Mobile configuration
+      // Mobile configuration (client ID from google-services.json)
       googleSignIn = GoogleSignIn(
-        scopes: ['email', 'profile'],
+        scopes: ['email', 'profile'], // Request access to email and profile info
       );
     }
 
-    // Trigger the authentication flow
+    // Trigger the authentication flow and show Google sign-in UI
     final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
+    // User canceled sign-in process
     if (googleUser == null) {
-      return; // User canceled the sign-in process
+      return;
     }
 
-    // Extract profile data
+    // Extract profile data from Google user
     String? photoUrl = googleUser.photoUrl;
     final String email = googleUser.email;
 
-    // Get authentication tokens
+    // Get authentication tokens from Google
     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-    // Create Firebase credential
+    // Create Firebase credential from Google auth tokens
     final credential = GoogleAuthProvider.credential(
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
 
-    // Sign in to Firebase
+    // Sign in to Firebase using the Google credential
     final UserCredential userCredential =
     await FirebaseAuth.instance.signInWithCredential(credential);
 
-    // Save profile picture to Firestore for later use
+    // Save profile picture URL to Firestore for later use in the app
     if (photoUrl != null) {
       await FirebaseFirestore.instance.collection('users').doc(email).set({
         'profilePictureUrl': photoUrl,
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true)); // Use merge to avoid overwriting other data
 
       print("Saved profile picture URL to Firestore: $photoUrl");
     }
@@ -66,17 +74,26 @@ Future<void> signInWithGoogle(BuildContext context) async {
     );
 
   } catch (e) {
+    // Log detailed error for debugging
     print("Detailed Google Sign-In error: $e");
+
+    // Show error message to user
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Error occurred: $e')),
     );
   }
 }
 
-// Handles Facebook authentication flow
+/// Handles Facebook authentication flow
+///
+/// Initiates the Facebook login process, retrieves user profile data,
+/// and navigates to home screen on successful authentication
+///
+/// @param context Current build context for navigation and displaying errors
+/// @return Future that completes when authentication flow is finished
 Future<void> signInWithFacebook(BuildContext context) async {
   try {
-    // Show loading indicator during auth process
+    // Show loading indicator during authentication process
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -85,64 +102,79 @@ Future<void> signInWithFacebook(BuildContext context) async {
       ),
     );
 
-    // Request Facebook login
+    // Request Facebook login with specific permissions
     final LoginResult result = await FacebookAuth.instance.login(
       permissions: ['email', 'public_profile'],
     );
 
     if (result.status == LoginStatus.success) {
-      // Get user profile data
+      // Get user profile data from Facebook
       final userData = await FacebookAuth.instance.getUserData(
-        fields: "email,picture.width(400)",
+        fields: "email,picture.width(400)", // Request high-quality profile picture
       );
 
-      // Extract user information
+      // Extract user information from Facebook response
       final String? email = userData['email'];
       final String? profilePicUrl = userData['picture']?['data']?['url'];
 
       print("Facebook email: $email");
       print("Facebook profile pic: $profilePicUrl");
 
-      // Update global variable for immediate display
+      // Update global variable for immediate display in UI
       userProfileImageUrl = profilePicUrl;
 
       // Close loading dialog
       Navigator.pop(context);
 
-      // Navigate to home screen
+      // Navigate to home screen after successful authentication
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => HomeScreen()),
       );
     } else {
-      // Close loading dialog
-      Navigator.pop(context);
+      // Handle failed login attempt
+      Navigator.pop(context); // Close loading dialog
+
+      // Display error message to user
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Facebook login failed: ${result.message}')),
       );
     }
   } catch (e) {
-    // Close loading dialog if open
+    // Close loading dialog if open (using try-catch to handle case where dialog isn't showing)
     try {
       Navigator.pop(context);
     } catch (_) {}
 
+    // Display error message to user
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Error: $e')),
     );
   }
 }
 
-// Main login screen widget
+/// Main login screen for the Sweet Meter application
+///
+/// Provides email/password authentication with options for social login,
+/// password reset, and account creation
 class LoginScreen extends StatefulWidget {
+  /// Creates a new LoginScreen
+  ///
+  /// @param key Widget key for identification
   const LoginScreen({Key? key}) : super(key: key);
 
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
 
+/// State management for the LoginScreen
+///
+/// Handles form input, authentication, and responsive layouts
 class _LoginScreenState extends State<LoginScreen> {
+  /// Controller for email input field
   final TextEditingController _emailController = TextEditingController();
+
+  /// Controller for password input field
   final TextEditingController _passwordController = TextEditingController();
 
   @override
@@ -152,10 +184,10 @@ class _LoginScreenState extends State<LoginScreen> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: true, // Resize when keyboard appears
       body: Stack(
         children: [
-          // Background image
+          // Background image layer
           Container(
             width: size.width,
             height: size.height,
@@ -166,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          // Purple gradient overlay
+          // Purple gradient overlay for readability
           Container(
             width: size.width,
             height: size.height,
@@ -179,13 +211,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          // Dark mode tinting
+          // Dark mode tinting layer (applied conditionally)
           Container(
             width: size.width,
             height: size.height,
-            color: Tinting(context),
+            color: Tinting(context), // Apply dark mode tint if enabled
           ),
-          // Responsive layout based on orientation
+          // Responsive layout based on device orientation
           isLandscape
               ? _buildLandscapeLayout(context, size)
               : _buildPortraitLayout(context, size),
@@ -194,7 +226,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Portrait mode layout
+  /// Builds the portrait mode layout for phones
+  ///
+  /// Creates a vertical arrangement of components optimized for portrait orientation
+  ///
+  /// @param context Current build context
+  /// @param size Screen dimensions
+  /// @return Widget containing the portrait layout
   Widget _buildPortraitLayout(BuildContext context, Size size) {
     return SingleChildScrollView(
       child: Padding(
@@ -203,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: Column(
           children: [
-            // App title
+            // App title with branding
             Center(
               child: Padding(
                 padding: EdgeInsets.only(top: size.height * 0.05),
@@ -219,10 +257,14 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             SizedBox(height: size.height * 0.05),
-            // Login form
+
+            // Login form with email/password fields
             _buildLoginForm(context, size),
-            // Social login options
+
+            // Social login options (Facebook/Google)
             _buildSocialLoginButtons(context, size, isPortrait: true),
+
+            // Bottom padding
             SizedBox(height: size.height * 0.05),
           ],
         ),
@@ -230,7 +272,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Landscape mode layout
+  /// Builds the landscape mode layout for phones and tablets
+  ///
+  /// Creates a horizontal arrangement of components optimized for landscape orientation
+  ///
+  /// @param context Current build context
+  /// @param size Screen dimensions
+  /// @return Widget containing the landscape layout
   Widget _buildLandscapeLayout(BuildContext context, Size size) {
     return SafeArea(
       child: SingleChildScrollView(
@@ -243,7 +291,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           child: Column(
             children: [
-              // App title
+              // App title with branding
               Padding(
                 padding: EdgeInsets.only(bottom: size.height * 0.02),
                 child: Text(
@@ -257,7 +305,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              // Vertical space
+              // Vertical space for layout balance
               SizedBox(height: size.height * 0.15),
 
               // Two-column layout for login form and social buttons
@@ -266,12 +314,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Login form column
+                    // Login form column (left side)
                     Expanded(
                       child: _buildCompactLoginForm(context, size),
                     ),
                     SizedBox(width: size.width * 0.05),
-                    // Social login column
+                    // Social login column (right side)
                     Expanded(
                       child: _buildSocialLoginButtons(context, size,
                           isPortrait: false),
@@ -286,7 +334,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Standard login form for portrait orientation
+  /// Builds the standard login form for portrait orientation
+  ///
+  /// Creates email and password fields with login button and account options
+  ///
+  /// @param context Current build context
+  /// @param size Screen dimensions
+  /// @return Widget containing the login form
   Widget _buildLoginForm(BuildContext context, Size size) {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
@@ -294,7 +348,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Email field
+        // Email input field
         TextField(
           controller: _emailController,
           style: const TextStyle(color: Colors.white),
@@ -313,10 +367,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         SizedBox(height: isLandscape ? size.height * 0.01 : size.height * 0.02),
-        // Password field
+
+        // Password input field
         TextField(
           controller: _passwordController,
-          obscureText: true,
+          obscureText: true, // Hide password characters
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: "Password",
@@ -333,6 +388,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         SizedBox(height: isLandscape ? size.height * 0.02 : size.height * 0.04),
+
         // Login button
         SizedBox(
           width: isLandscape ? size.width * 0.3 : size.width * 0.6,
@@ -340,17 +396,23 @@ class _LoginScreenState extends State<LoginScreen> {
           child: ElevatedButton(
             onPressed: () async {
               try {
+                // Get and validate form input
                 final email = _emailController.text.trim();
                 final password = _passwordController.text.trim();
+
+                // Attempt Firebase email/password login
                 await FirebaseAuth.instance.signInWithEmailAndPassword(
                   email: email,
                   password: password,
                 );
+
+                // Navigate to home screen on success
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => HomeScreen()),
                 );
               } catch (e) {
+                // Display error message to user
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text("Error: $e")),
                 );
@@ -365,23 +427,31 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         SizedBox(height: isLandscape ? size.height * 0.01 : size.height * 0.02),
+
         // Password reset option
         TextButton(
           onPressed: () async {
             try {
+              // Get email from input field
               final email = _emailController.text.trim();
+
               if (email.isNotEmpty) {
+                // Send password reset email via Firebase
                 await FirebaseAuth.instance
                     .sendPasswordResetEmail(email: email);
+
+                // Notify user of success
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Password reset email sent!")),
                 );
               } else {
+                // Validate email field isn't empty
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Please enter an email")),
                 );
               }
             } catch (e) {
+              // Display error message to user
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text("Error: $e")),
               );
@@ -395,9 +465,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+
         // Account creation option
         TextButton(
           onPressed: () {
+            // Navigate to signup screen
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const SignUpScreen()),
@@ -415,13 +487,19 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Compact login form for landscape orientation
+  /// Builds a compact login form for landscape orientation
+  ///
+  /// Creates a space-efficient login form with fewer options
+  ///
+  /// @param context Current build context
+  /// @param size Screen dimensions
+  /// @return Widget containing the compact login form
   Widget _buildCompactLoginForm(BuildContext context, Size size) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Email field
+        // Email input field
         TextField(
           controller: _emailController,
           style: const TextStyle(color: Colors.white),
@@ -440,10 +518,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         SizedBox(height: size.height * 0.008),
-        // Password field
+
+        // Password input field
         TextField(
           controller: _passwordController,
-          obscureText: true,
+          obscureText: true, // Hide password characters
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: "Password",
@@ -460,6 +539,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         SizedBox(height: size.height * 0.012),
+
         // Login button
         SizedBox(
           width: size.width * 0.25,
@@ -467,17 +547,23 @@ class _LoginScreenState extends State<LoginScreen> {
           child: ElevatedButton(
             onPressed: () async {
               try {
+                // Get and validate form input
                 final email = _emailController.text.trim();
                 final password = _passwordController.text.trim();
+
+                // Attempt Firebase email/password login
                 await FirebaseAuth.instance.signInWithEmailAndPassword(
                   email: email,
                   password: password,
                 );
+
+                // Navigate to home screen on success
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => HomeScreen()),
                 );
               } catch (e) {
+                // Display error message to user
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text("Error: $e")),
                 );
@@ -495,11 +581,19 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Social login options that adapt based on orientation
+  /// Builds social login options that adapt based on orientation
+  ///
+  /// Creates a layout for social login buttons and additional account options
+  /// that changes based on screen orientation
+  ///
+  /// @param context Current build context
+  /// @param size Screen dimensions
+  /// @param isPortrait Whether the current orientation is portrait
+  /// @return Widget containing social login buttons
   Widget _buildSocialLoginButtons(BuildContext context, Size size,
       {required bool isPortrait}) {
     if (isPortrait) {
-      // Portrait layout - horizontal buttons
+      // Portrait layout - horizontal buttons with minimal options
       return Column(
         children: [
           Divider(
@@ -507,7 +601,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // Facebook login
+              // Facebook login button
               SizedBox(
                 width: size.width * 0.38,
                 height: size.height * 0.05,
@@ -525,7 +619,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              // Google login
+              // Google login button
               SizedBox(
                 width: size.width * 0.38,
                 height: size.height * 0.05,
@@ -548,7 +642,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       );
     } else {
-      // Landscape layout - vertical cards with additional options
+      // Landscape layout - vertical card with additional options
       return Container(
         decoration: BoxDecoration(
           color: Colors.black12,
@@ -571,7 +665,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: size.height * 0.01),
 
-            // Facebook login
+            // Facebook login button
             SizedBox(
               width: double.infinity,
               height: size.height * 0.06,
@@ -594,7 +688,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: size.height * 0.008),
 
-            // Google login
+            // Google login button
             SizedBox(
               width: size.width * 0.38,
               height: size.height * 0.05,
@@ -622,7 +716,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            // Additional options section
+            // Additional options section title
             Text(
               "Account Options",
               style: TextStyle(
@@ -633,27 +727,34 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: size.height * 0.01),
 
-            // Password reset
+            // Password reset button
             SizedBox(
               width: double.infinity,
               height: size.height * 0.05,
               child: ElevatedButton(
                 onPressed: () async {
                   try {
+                    // Get email from input field
                     final email = _emailController.text.trim();
+
                     if (email.isNotEmpty) {
+                      // Send password reset email via Firebase
                       await FirebaseAuth.instance
                           .sendPasswordResetEmail(email: email);
+
+                      // Notify user of success
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                             content: Text("Password reset email sent!")),
                       );
                     } else {
+                      // Validate email field isn't empty
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text("Please enter an email")),
                       );
                     }
                   } catch (e) {
+                    // Display error message to user
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text("Error: $e")),
                     );
@@ -673,12 +774,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: size.height * 0.008),
 
-            // Account creation
+            // Account creation button
             SizedBox(
               width: double.infinity,
               height: size.height * 0.05,
               child: ElevatedButton(
                 onPressed: () {
+                  // Navigate to signup screen
                   Navigator.push(
                     context,
                     MaterialPageRoute(

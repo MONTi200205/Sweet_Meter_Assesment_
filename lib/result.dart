@@ -1,4 +1,3 @@
-// Result Screen - Updated with ConsumptionTracker
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'consumption_tracker.dart';
@@ -7,32 +6,81 @@ import 'History.dart';
 import 'home_screen.dart';
 import 'daily_sugar.dart';
 
+/// Result screen that displays food sugar information
+///
+/// Shows detailed information about a food item's sugar content
+/// and allows users to track consumption with quantity input.
+/// Supports both portrait and landscape orientations.
 class Result extends StatefulWidget {
+  /// Name of the food item being displayed
   final String foodName;
+
+  /// Sugar level of the food (e.g. "25%")
   final String sugarLevel;
 
-  Result({required this.foodName, required this.sugarLevel});
+  const Result({
+    Key? key,
+    required this.foodName,
+    required this.sugarLevel
+  }) : super(key: key);
 
   @override
   _ResultState createState() => _ResultState();
 }
 
-class _ResultState extends State<Result> {
+class _ResultState extends State<Result> with WidgetsBindingObserver {
+  // Amount of food consumed in grams
   double _consumedAmount = 0.0;
+
+  // Calculated sugar amount based on consumption
   double _calculatedSugar = 0.0;
+
+  // Indicates if the user has calculated consumption
   bool _hasCalculated = false;
 
   @override
   void initState() {
     super.initState();
+    // Register for orientation changes
+    WidgetsBinding.instance.addObserver(this);
+
+    // Save food entry to user's history
+    _saveFoodEntry();
+  }
+
+  @override
+  void dispose() {
+    // Remove orientation change observer
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Handle orientation changes without reloading data
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    // Just rebuild the UI without reinitializing data
+  }
+
+  /// Saves the current food entry to user's history
+  ///
+  /// Stores food information in both local storage and Firestore
+  void _saveFoodEntry() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       // Save food entry using ConsumptionTracker
-      ConsumptionTracker.saveFoodEntry(user.email!, widget.foodName, widget.sugarLevel);
+      await ConsumptionTracker.saveFoodEntry(
+          user.email!,
+          widget.foodName,
+          widget.sugarLevel
+      );
     }
   }
 
-  // Show the consumption tracking popup - Using ConsumptionDialog
+  /// Shows the consumption tracking dialog
+  ///
+  /// Displays a modal dialog where users can input consumption amount
+  /// and receive calculated sugar content
   void _showConsumptionDialog() {
     showDialog(
       context: context,
@@ -60,14 +108,14 @@ class _ResultState extends State<Result> {
 
     return Stack(
       children: [
-        // Background Color
+        // Background color layer
         Container(
           width: double.infinity,
           height: double.infinity,
           color: Background(context),
         ),
 
-        // Background Image Overlay
+        // Background image with overlay for visual effect
         Container(
           width: double.infinity,
           height: double.infinity,
@@ -83,19 +131,22 @@ class _ResultState extends State<Result> {
           ),
         ),
 
+        // Main content scaffold
         Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
+            // Back navigation button
             leading: IconButton(
               icon: Icon(Icons.arrow_back, color: IconColor(context)),
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
-              // Daily consumption badge
+              // Daily consumption badge showing today's intake
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
                 child: DailyConsumptionBadge(),
               ),
+              // Home button for direct navigation
               IconButton(
                 icon: Icon(Icons.home, color: IconColor(context)),
                 onPressed: () {
@@ -109,11 +160,13 @@ class _ResultState extends State<Result> {
             backgroundColor: Colors.transparent,
             elevation: 0,
           ),
+          // Select layout based on orientation
           body: isLandscape
               ? _buildLandscapeLayout(context, size, user)
               : _buildPortraitLayout(context, size, user),
+          // Floating action button for consumption tracking
           floatingActionButton: Padding(
-            padding: EdgeInsets.only(bottom: 60), // Move the FAB up to avoid overlapping
+            padding: EdgeInsets.only(bottom: 60), // Move up to avoid overlap
             child: FloatingActionButton(
               onPressed: _showConsumptionDialog,
               backgroundColor: Colors.purple,
@@ -126,6 +179,10 @@ class _ResultState extends State<Result> {
     );
   }
 
+  /// Builds portrait orientation layout
+  ///
+  /// Vertical layout with full-width components
+  /// and prominent result card
   Widget _buildPortraitLayout(BuildContext context, Size size, User? user) {
     return SingleChildScrollView(
       child: Padding(
@@ -133,6 +190,7 @@ class _ResultState extends State<Result> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Screen title
             Text(
               'Results',
               style: TextStyle(
@@ -144,7 +202,7 @@ class _ResultState extends State<Result> {
             Divider(color: Colors.purple, thickness: 2),
             SizedBox(height: size.height * 0.05),
 
-            // Result card
+            // Result card with food information
             Container(
               padding: EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -181,7 +239,7 @@ class _ResultState extends State<Result> {
 
                   SizedBox(height: 16),
 
-                  // Food name
+                  // Food name display
                   Text(
                     'Food:',
                     style: TextStyle(
@@ -203,7 +261,7 @@ class _ResultState extends State<Result> {
 
                   SizedBox(height: 24),
 
-                  // Sugar level
+                  // Sugar level display
                   Text(
                     'Sugar Level:',
                     style: TextStyle(
@@ -236,7 +294,7 @@ class _ResultState extends State<Result> {
                     ),
                   ),
 
-                  // Calculated result if available
+                  // Consumption summary if user has calculated intake
                   if (_hasCalculated)
                     ConsumptionSummary(
                       consumedAmount: _consumedAmount,
@@ -249,6 +307,7 @@ class _ResultState extends State<Result> {
             SizedBox(height: size.height * 0.05),
 
             // Navigation buttons
+            // History button
             Container(
               width: double.infinity,
               height: 56,
@@ -283,6 +342,7 @@ class _ResultState extends State<Result> {
 
             SizedBox(height: size.height * 0.02),
 
+            // Daily sugar tracker button
             Container(
               width: double.infinity,
               height: 56,
@@ -317,6 +377,7 @@ class _ResultState extends State<Result> {
               ),
             ),
 
+            // User email display
             SizedBox(height: size.height * 0.03),
             Text(
               "Logged in as: ${user?.email ?? 'Unknown'}",
@@ -332,6 +393,10 @@ class _ResultState extends State<Result> {
     );
   }
 
+  /// Builds landscape orientation layout
+  ///
+  /// Two-column layout with results card on left
+  /// and navigation options on right
   Widget _buildLandscapeLayout(BuildContext context, Size size, User? user) {
     return SingleChildScrollView(
       child: Padding(
@@ -350,11 +415,11 @@ class _ResultState extends State<Result> {
             Divider(color: Colors.white, thickness: 2),
             SizedBox(height: size.height * 0.03),
 
-            // Content in row layout
+            // Main content row layout
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Results card
+                // Left side - Results card
                 Expanded(
                   flex: 3,
                   child: Container(
@@ -369,10 +434,11 @@ class _ResultState extends State<Result> {
                     ),
                     child: Row(
                       children: [
-                        // Left column - Food info
+                        // Food information
                         Expanded(
                           child: Column(
                             children: [
+                              // Food icon
                               Container(
                                 padding: EdgeInsets.all(12),
                                 decoration: BoxDecoration(
@@ -387,6 +453,8 @@ class _ResultState extends State<Result> {
                                 ),
                               ),
                               SizedBox(height: 12),
+
+                              // Food name
                               Text(
                                 'Food:',
                                 style: TextStyle(
@@ -405,6 +473,8 @@ class _ResultState extends State<Result> {
                                 textAlign: TextAlign.center,
                               ),
                               SizedBox(height: 16),
+
+                              // Sugar level
                               Text(
                                 'Sugar Level:',
                                 style: TextStyle(
@@ -440,7 +510,7 @@ class _ResultState extends State<Result> {
                           ),
                         ),
 
-                        // Add vertical divider if calculation was performed
+                        // Divider between food info and consumption data
                         if (_hasCalculated)
                           Container(
                             height: size.height * 0.2,
@@ -449,12 +519,13 @@ class _ResultState extends State<Result> {
                             margin: EdgeInsets.symmetric(horizontal: 16),
                           ),
 
-                        // Consumption results if available
+                        // Consumption summary if available
                         if (_hasCalculated)
                           Expanded(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
+                                // Consumption title with icon
                                 Icon(
                                   Icons.analytics,
                                   color: Colors.purple,
@@ -470,6 +541,8 @@ class _ResultState extends State<Result> {
                                   ),
                                 ),
                                 SizedBox(height: 16),
+
+                                // Consumption metrics display
                                 Row(
                                   children: [
                                     // Amount consumed
@@ -496,6 +569,7 @@ class _ResultState extends State<Result> {
                                       ),
                                     ),
 
+                                    // Vertical divider
                                     Container(
                                       height: 40,
                                       width: 1,
@@ -537,11 +611,12 @@ class _ResultState extends State<Result> {
 
                 SizedBox(width: size.width * 0.02),
 
-                // Navigation buttons (vertical in landscape)
+                // Right side - Navigation buttons in column layout
                 Expanded(
                   flex: 1,
                   child: Column(
                     children: [
+                      // History button
                       Container(
                         width: double.infinity,
                         child: ElevatedButton.icon(
@@ -576,7 +651,10 @@ class _ResultState extends State<Result> {
                           ),
                         ),
                       ),
+
                       SizedBox(height: 12),
+
+                      // Daily sugar tracker button
                       Container(
                         width: double.infinity,
                         child: ElevatedButton.icon(
@@ -613,7 +691,10 @@ class _ResultState extends State<Result> {
                           ),
                         ),
                       ),
+
                       SizedBox(height: 16),
+
+                      // User email info
                       Text(
                         "Logged in as: \n${user?.email ?? 'Unknown'}",
                         textAlign: TextAlign.center,

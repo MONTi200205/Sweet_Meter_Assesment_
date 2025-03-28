@@ -1,8 +1,15 @@
+/// SignUpScreen.dart
+///
+/// A Flutter screen that handles user registration with email verification.
+/// This screen provides a responsive UI with different layouts for portrait and landscape orientations.
+/// It includes form validation, Firebase authentication, and email verification functionality.
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sweet_meter_assesment/utils/Darkmode.dart';
 
-// Screen for user registration with email verification
+/// A StatefulWidget that provides the user registration interface with email verification.
+/// This screen adapts its layout based on device orientation and screen size.
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
 
@@ -10,14 +17,25 @@ class SignUpScreen extends StatefulWidget {
   _SignUpScreenState createState() => _SignUpScreenState();
 }
 
+/// The state management class for SignUpScreen.
+/// Handles user input, form validation, and the registration process.
 class _SignUpScreenState extends State<SignUpScreen> {
-  // Controllers for form fields
+  /// Controller for the email input field
   final TextEditingController _emailController = TextEditingController();
+
+  /// Controller for the password input field
   final TextEditingController _passwordController = TextEditingController();
+
+  /// Controller for the password confirmation input field
   final TextEditingController _confirmPasswordController = TextEditingController();
+
+  /// Flag indicating whether an authentication operation is in progress
   bool _isLoading = false;
 
-  // Handles user registration and email verification flow
+  /// Handles the user registration process and email verification flow.
+  ///
+  /// Validates input, creates a Firebase user account, and sends a verification email.
+  /// Shows appropriate messages for success or failure conditions.
   Future<void> _signUp() async {
     setState(() {
       _isLoading = true;
@@ -66,7 +84,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  // Dialog to inform users about email verification requirement
+  /// Displays a dialog informing the user about the email verification requirement.
+  ///
+  /// Shows information about the verification process and next steps.
+  /// This dialog is not dismissible to ensure the user acknowledges the information.
   void _showVerificationDialog() {
     showDialog(
       context: context,
@@ -99,6 +120,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  /// Builds the main UI for the SignUpScreen.
+  ///
+  /// @param context The BuildContext for this widget
+  /// @return A Widget representing the complete screen UI
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -158,7 +183,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Portrait layout optimized for vertical screens
+  /// Builds the portrait layout optimized for vertical screens.
+  ///
+  /// @param context The current build context
+  /// @param size The size of the current screen
+  /// @return A widget containing the portrait-oriented UI
   Widget _buildPortraitLayout(BuildContext context, Size size) {
     return SafeArea(
       child: SingleChildScrollView(
@@ -190,7 +219,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Landscape layout with two-column design
+  /// Builds the landscape layout with a two-column design.
+  ///
+  /// @param context The current build context
+  /// @param size The size of the current screen
+  /// @return A widget containing the landscape-oriented UI with two columns
   Widget _buildLandscapeLayout(BuildContext context, Size size) {
     return SafeArea(
       child: SingleChildScrollView(
@@ -247,7 +280,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Compact sign-up form optimized for landscape mode
+  /// Builds a compact sign-up form optimized for landscape mode.
+  ///
+  /// @param context The current build context
+  /// @param size The size of the current screen
+  /// @return A widget containing the compact form with smaller font sizes and spacing
   Widget _buildCompactSignUpForm(BuildContext context, Size size) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -331,7 +368,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Welcome message and additional options panel for landscape mode
+  /// Builds a welcome message and additional options panel for landscape mode.
+  ///
+  /// @param context The current build context
+  /// @param size The size of the current screen
+  /// @return A widget containing welcome information and navigation options
   Widget _buildCompactInfoPanel(BuildContext context, Size size) {
     return Container(
       padding: EdgeInsets.all(size.height * 0.015),
@@ -412,7 +453,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Standard sign-up form used in portrait mode
+  /// Builds the standard sign-up form used primarily in portrait mode.
+  ///
+  /// @param context The current build context
+  /// @param size The size of the current screen
+  /// @param isPortrait Flag indicating whether the current orientation is portrait
+  /// @return A widget containing the standard form with appropriate sizing
   Widget _buildSignUpForm(BuildContext context, Size size, {required bool isPortrait}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
