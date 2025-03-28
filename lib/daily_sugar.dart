@@ -559,17 +559,34 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
             constraints: BoxConstraints(maxHeight: size.height * 0.8),
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Background(context),
+              // Subtle gradient background
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Background(context).withOpacity(0.85),
+                  Background(context).withOpacity(0.95),
+                ],
+              ),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white, width: 2),
+              border:
+                  Border.all(color: Colors.white.withOpacity(0.6), width: 1.5),
               image: DecorationImage(
                 image: AssetImage("assets/Background.png"),
                 fit: BoxFit.cover,
+                opacity: 0.65,
                 colorFilter: ColorFilter.mode(
-                  Colors.black.withOpacity(0.15),
-                  BlendMode.softLight, // Softer blend mode
+                  Tinting(context),
+                  BlendMode.luminosity,
                 ),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 15,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -578,13 +595,20 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
                 Text(
                   'Sugar Consumption on $displayDate',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: BlackText(context), // Updated to use BlackText
                     fontSize: titleSize,
                     fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        blurRadius: 3.0,
+                        color: Colors.black.withOpacity(0.3),
+                        offset: Offset(0, 1),
+                      ),
+                    ],
                   ),
                   textAlign: TextAlign.center,
                 ),
-                Divider(color: Colors.white.withOpacity(0.5)),
+                Divider(color: Colors.white.withOpacity(0.4)),
                 SizedBox(height: 10),
 
                 // Total
@@ -593,7 +617,7 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
                   style: TextStyle(
                     fontSize: contentSize,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: BlackText(context), // Updated to use BlackText
                   ),
                 ),
                 SizedBox(height: 16),
@@ -602,7 +626,9 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
                 items.isEmpty
                     ? Text(
                         'No items recorded for this day',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(
+                            color:
+                                BlackText(context)), // Updated to use BlackText
                       )
                     : Flexible(
                         child: ListView.builder(
@@ -628,10 +654,10 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
                               margin: EdgeInsets.only(bottom: 8),
                               padding: EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
+                                color: Colors.white.withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                    color: Colors.white.withOpacity(0.3)),
+                                    color: Colors.white.withOpacity(0.2)),
                               ),
                               child: Row(
                                 children: [
@@ -645,7 +671,8 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
                                           item['foodName'] as String? ??
                                               'Unknown Food',
                                           style: TextStyle(
-                                            color: Colors.white,
+                                            color: BlackText(
+                                                context), // Updated to use BlackText
                                             fontWeight: FontWeight.bold,
                                             fontSize: itemSize,
                                           ),
@@ -654,8 +681,8 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
                                         Text(
                                           '$time • ${_safeToDouble(item['amountInGrams']).toStringAsFixed(1)} g consumed',
                                           style: TextStyle(
-                                            color:
-                                                Colors.white.withOpacity(0.7),
+                                            color: BlackText(context).withOpacity(
+                                                0.7), // Updated to use BlackText
                                             fontSize: itemSize * 0.85,
                                           ),
                                         ),
@@ -668,16 +695,17 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
                                     padding: EdgeInsets.symmetric(
                                         horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: Colors.purple.withOpacity(0.2),
+                                      color: Colors.purple.withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
-                                          color: Colors.white.withOpacity(0.3)),
+                                          color: Colors.white.withOpacity(0.2)),
                                     ),
                                     child: Text(
                                       '${_safeToDouble(item['sugarAmount']).toStringAsFixed(1)} g',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                        color: BlackText(
+                                            context), // Updated to use BlackText
                                         fontSize: itemSize * 0.9,
                                       ),
                                     ),
@@ -695,7 +723,7 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple,
+                    backgroundColor: Colors.purple.withOpacity(0.7),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
@@ -705,7 +733,8 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
                     child: Text(
                       'Close',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: WhiteText(
+                            context), // Use WhiteText for button text on purple background
                         fontWeight: FontWeight.bold,
                         fontSize: contentSize,
                       ),

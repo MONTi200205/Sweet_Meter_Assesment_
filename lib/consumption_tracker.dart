@@ -11,10 +11,11 @@ import 'daily_sugar.dart';
 /// Represents a single food item entry with its sugar content data
 /// and optional consumption tracking information
 class FoodSugarEntry {
-  final String foodName;      // Name of the food item
-  final String sugarLevel;    // Sugar level as a string (e.g., "25%")
+  final String foodName; // Name of the food item
+  final String sugarLevel; // Sugar level as a string (e.g., "25%")
   final double? amountConsumed; // Optional amount consumed in grams
-  final double? calculatedSugar; // Optional calculated sugar based on consumption
+  final double?
+      calculatedSugar; // Optional calculated sugar based on consumption
 
   FoodSugarEntry({
     required this.foodName,
@@ -69,7 +70,7 @@ class ConsumptionTracker {
       // Load existing local data or initialize empty map
       final dataMapString = prefs.getString(userFoodDataKey);
       final Map<String, dynamic> dataMap =
-      dataMapString != null ? json.decode(dataMapString) : {};
+          dataMapString != null ? json.decode(dataMapString) : {};
 
       // Retrieve or initialize the user's entries list from available sources
       final List<dynamic> userList = dataMap[email] ?? userDataMap[email] ?? [];
@@ -111,7 +112,7 @@ class ConsumptionTracker {
   static Future<Map<String, dynamic>> _syncWithFirestore(String email) async {
     try {
       final doc =
-      await FirebaseFirestore.instance.collection('users').doc(email).get();
+          await FirebaseFirestore.instance.collection('users').doc(email).get();
       if (doc.exists) {
         final data = doc.data();
         if (data != null && data.containsKey('foodEntries')) {
@@ -252,8 +253,8 @@ class ConsumptionTracker {
 /// Displays a modal dialog for the user to input consumption quantity
 /// and calculates the resulting sugar amount
 class ConsumptionDialog extends StatefulWidget {
-  final String foodName;                  // Name of the food item
-  final String sugarLevel;                // Sugar level as a string (e.g., "25%")
+  final String foodName; // Name of the food item
+  final String sugarLevel; // Sugar level as a string (e.g., "25%")
   final Function(double, double) onCalculated; // Callback for calculated values
 
   const ConsumptionDialog({
@@ -270,25 +271,18 @@ class ConsumptionDialog extends StatefulWidget {
 class _ConsumptionDialogState extends State<ConsumptionDialog> {
   final TextEditingController _amountController = TextEditingController();
 
-  /// Calculates sugar amount and saves consumption data
-  ///
-  /// Called when user submits their consumption amount
   void _calculateSugarAmount() {
     if (_amountController.text.isEmpty) return;
 
-    // Parse the user input and calculate sugar amount
     final consumedAmount = double.tryParse(_amountController.text) ?? 0.0;
     final calculatedSugar = ConsumptionTracker.calculateSugarAmount(
         widget.sugarLevel, consumedAmount);
 
-    // Save the consumption data to daily tracking
     ConsumptionTracker.saveDailyConsumption(
         widget.foodName, consumedAmount, calculatedSugar);
 
-    // Notify parent widget with the calculated values
     widget.onCalculated(consumedAmount, calculatedSugar);
 
-    // Close the dialog
     Navigator.pop(context);
   }
 
@@ -303,14 +297,15 @@ class _ConsumptionDialogState extends State<ConsumptionDialog> {
         decoration: BoxDecoration(
           color: Background(context),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white, width: 2),
+          border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
           image: DecorationImage(
             image: AssetImage("assets/Background.png"),
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(0.2),
-              BlendMode.darken,
+              Tinting(context),
+              BlendMode.overlay,
             ),
+            opacity: 0.85,
           ),
         ),
         child: Column(
@@ -321,13 +316,13 @@ class _ConsumptionDialogState extends State<ConsumptionDialog> {
               'Track Your Consumption',
               style: TextStyle(
                 fontSize: size.width * 0.06,
-                color: Colors.white,
+                color: BlackText(context),
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
             ),
 
-            Divider(color: Colors.white, thickness: 1),
+            Divider(color: Colors.white.withOpacity(0.7), thickness: 1),
             SizedBox(height: 16),
 
             // Food name display
@@ -336,7 +331,7 @@ class _ConsumptionDialogState extends State<ConsumptionDialog> {
               style: TextStyle(
                 fontSize: size.width * 0.05,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: BlackText(context),
               ),
               textAlign: TextAlign.center,
             ),
@@ -349,14 +344,14 @@ class _ConsumptionDialogState extends State<ConsumptionDialog> {
                 vertical: 8,
               ),
               decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.15),
+                color: Colors.purple.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.white),
+                border: Border.all(color: Colors.white.withOpacity(0.8)),
               ),
               child: Text(
                 widget.sugarLevel,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Colors.white, // Keep as white
                   fontWeight: FontWeight.w600,
                   fontSize: size.width * 0.04,
                 ),
@@ -368,27 +363,28 @@ class _ConsumptionDialogState extends State<ConsumptionDialog> {
             // Amount input field
             Container(
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.white),
+                border: Border.all(color: BlackText(context)),
               ),
               child: TextField(
                 controller: _amountController,
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: BlackText(context),
                   fontSize: size.width * 0.045,
                 ),
                 decoration: InputDecoration(
                   labelText: 'Amount consumed (grams)',
                   labelStyle: TextStyle(
-                    color: Colors.white,
+                    color: BlackText(context),
                   ),
-                  prefixIcon: Icon(Icons.scale, color: Colors.white),
+                  prefixIcon: Icon(Icons.scale,
+                      color: BlackText(context)),
                   border: InputBorder.none,
                   contentPadding:
-                  EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                      EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                 ),
                 onSubmitted: (_) => _calculateSugarAmount(),
               ),
@@ -404,7 +400,7 @@ class _ConsumptionDialogState extends State<ConsumptionDialog> {
                   child: TextButton(
                     onPressed: () => Navigator.pop(context),
                     style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
+                      foregroundColor: Colors.white, // Keep as white
                       padding: EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: Text(
@@ -421,7 +417,7 @@ class _ConsumptionDialogState extends State<ConsumptionDialog> {
                   child: ElevatedButton(
                     onPressed: _calculateSugarAmount,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple,
+                      backgroundColor: Colors.purple.withOpacity(0.8),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -431,7 +427,7 @@ class _ConsumptionDialogState extends State<ConsumptionDialog> {
                       'Calculate',
                       style: TextStyle(
                         fontSize: size.width * 0.04,
-                        color: Colors.white,
+                        color: Colors.white, // Keep as white
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -450,7 +446,7 @@ class _ConsumptionDialogState extends State<ConsumptionDialog> {
 ///
 /// Shows the amount consumed and calculated sugar in a formatted display
 class ConsumptionSummary extends StatelessWidget {
-  final double consumedAmount;  // Amount consumed in grams
+  final double consumedAmount; // Amount consumed in grams
   final double calculatedSugar; // Calculated sugar amount in grams
 
   const ConsumptionSummary({
@@ -557,7 +553,7 @@ class DailyConsumptionBadge extends StatefulWidget {
 
 class _DailyConsumptionBadgeState extends State<DailyConsumptionBadge> {
   Map<String, dynamic>? _todayData; // Today's consumption data
-  bool _isLoading = true;           // Loading state indicator
+  bool _isLoading = true; // Loading state indicator
 
   @override
   void initState() {
