@@ -53,8 +53,10 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
       final DateTime sevenDaysAgo = now.subtract(Duration(days: 7));
 
       // Format date keys
-      final String startDateKey = '${sevenDaysAgo.year}-${sevenDaysAgo.month.toString().padLeft(2, '0')}-${sevenDaysAgo.day.toString().padLeft(2, '0')}';
-      final String endDateKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final String startDateKey =
+          '${sevenDaysAgo.year}-${sevenDaysAgo.month.toString().padLeft(2, '0')}-${sevenDaysAgo.day.toString().padLeft(2, '0')}';
+      final String endDateKey =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
       // Fetch ALL consumption data at once
       final querySnapshot = await FirebaseFirestore.instance
@@ -86,7 +88,8 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
           final parts = dateStr.split('-');
           if (parts.length >= 3) {
             final String displayDate = '${parts[2]}/${parts[1]}';
-            final String fullDisplayDate = '${parts[2]}/${parts[1]}/${parts[0]}';
+            final String fullDisplayDate =
+                '${parts[2]}/${parts[1]}/${parts[0]}';
 
             // Add to consumption data
             consumptionData.add({
@@ -107,7 +110,8 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
       }
 
       // Sort chart data chronologically
-      chartData.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+      chartData
+          .sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
 
       // Fill missing days in chart
       final filledChartData = _fillMissingDays(chartData, sevenDaysAgo, now);
@@ -151,7 +155,8 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
       final date = startDate.add(Duration(days: i));
       final String dateKey =
           '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-      final String displayDate = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+      final String displayDate =
+          '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
 
       dateMap[dateKey] = {
         'date': dateKey,
@@ -178,7 +183,8 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Stack(
       children: [
@@ -198,9 +204,11 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
               image: AssetImage("assets/Background.png"),
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.3),
-                BlendMode.darken,
+                Colors.black.withOpacity(0.2),
+                BlendMode.overlay,
               ),
+              opacity:
+                  0.7, // Additional overall opacity reduction for the image
             ),
           ),
         ),
@@ -211,7 +219,8 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
           appBar: AppBar(
             title: Text(
               'Sugar Consumption Tracker',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
             leading: IconButton(
               icon: Icon(Icons.arrow_back, color: IconColor(context)),
@@ -234,10 +243,12 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
           body: _isInitialLoading
               ? Center(child: CircularProgressIndicator(color: Colors.purple))
               : _errorMessage.isNotEmpty
-              ? Center(child: Text(_errorMessage, style: TextStyle(color: Colors.white)))
-              : isLandscape
-              ? _buildLandscapeLayout(context, size)
-              : _buildPortraitLayout(context, size),
+                  ? Center(
+                      child: Text(_errorMessage,
+                          style: TextStyle(color: Colors.white)))
+                  : isLandscape
+                      ? _buildLandscapeLayout(context, size)
+                      : _buildPortraitLayout(context, size),
         ),
       ],
     );
@@ -458,9 +469,12 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
     }
 
     // Font sizes for different orientations
-    final double titleSize = isLandscape ? size.width * 0.025 : size.width * 0.04;
-    final double subtitleSize = isLandscape ? size.width * 0.02 : size.width * 0.035;
-    final double valueSize = isLandscape ? size.width * 0.025 : size.width * 0.045;
+    final double titleSize =
+        isLandscape ? size.width * 0.025 : size.width * 0.04;
+    final double subtitleSize =
+        isLandscape ? size.width * 0.02 : size.width * 0.035;
+    final double valueSize =
+        isLandscape ? size.width * 0.025 : size.width * 0.045;
 
     // Build list from cached data - no more StreamBuilder
     return ListView.builder(
@@ -515,14 +529,19 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
   }
 
   /// Show day details dialog
-  void _showDayDetails(BuildContext context, Map<String, dynamic> data, String dateStr) {
+  void _showDayDetails(
+      BuildContext context, Map<String, dynamic> data, String dateStr) {
     final size = MediaQuery.of(context).size;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     // Size adjustments
-    final double titleSize = isLandscape ? size.width * 0.03 : size.width * 0.05;
-    final double contentSize = isLandscape ? size.width * 0.025 : size.width * 0.04;
-    final double itemSize = isLandscape ? size.width * 0.02 : size.width * 0.035;
+    final double titleSize =
+        isLandscape ? size.width * 0.03 : size.width * 0.05;
+    final double contentSize =
+        isLandscape ? size.width * 0.025 : size.width * 0.04;
+    final double itemSize =
+        isLandscape ? size.width * 0.02 : size.width * 0.035;
 
     // Get display date
     final String displayDate = data['displayDate'] as String? ?? dateStr;
@@ -547,8 +566,8 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
                 image: AssetImage("assets/Background.png"),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  Colors.black.withOpacity(0.2),
-                  BlendMode.darken,
+                  Colors.black.withOpacity(0.15),
+                  BlendMode.softLight, // Softer blend mode
                 ),
               ),
             ),
@@ -582,85 +601,93 @@ class _DailySugarTrackerState extends State<DailySugarTracker> {
                 // Items list
                 items.isEmpty
                     ? Text(
-                  'No items recorded for this day',
-                  style: TextStyle(color: Colors.white),
-                )
+                        'No items recorded for this day',
+                        style: TextStyle(color: Colors.white),
+                      )
                     : Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index] as Map<String, dynamic>? ?? {};
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: items.length,
+                          itemBuilder: (context, index) {
+                            final item =
+                                items[index] as Map<String, dynamic>? ?? {};
 
-                      // Format time
-                      String time = "--:--";
-                      try {
-                        final timestamp = item['timestamp'] as Timestamp?;
-                        if (timestamp != null) {
-                          time = DateFormat('HH:mm').format(timestamp.toDate());
-                        }
-                      } catch (e) {
-                        print('Error formatting time: $e');
-                      }
+                            // Format time
+                            String time = "--:--";
+                            try {
+                              final timestamp = item['timestamp'] as Timestamp?;
+                              if (timestamp != null) {
+                                time = DateFormat('HH:mm')
+                                    .format(timestamp.toDate());
+                              }
+                            } catch (e) {
+                              print('Error formatting time: $e');
+                            }
 
-                      return Container(
-                        margin: EdgeInsets.only(bottom: 8),
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            // Food details
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            return Container(
+                              margin: EdgeInsets.only(bottom: 8),
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: Colors.white.withOpacity(0.3)),
+                              ),
+                              child: Row(
                                 children: [
-                                  Text(
-                                    item['foodName'] as String? ?? 'Unknown Food',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: itemSize,
+                                  // Food details
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item['foodName'] as String? ??
+                                              'Unknown Food',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: itemSize,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          '$time • ${_safeToDouble(item['amountInGrams']).toStringAsFixed(1)} g consumed',
+                                          style: TextStyle(
+                                            color:
+                                                Colors.white.withOpacity(0.7),
+                                            fontSize: itemSize * 0.85,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    '$time • ${_safeToDouble(item['amountInGrams']).toStringAsFixed(1)} g consumed',
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
-                                      fontSize: itemSize * 0.85,
+
+                                  // Sugar badge
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                          color: Colors.white.withOpacity(0.3)),
+                                    ),
+                                    child: Text(
+                                      '${_safeToDouble(item['sugarAmount']).toStringAsFixed(1)} g',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        fontSize: itemSize * 0.9,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-
-                            // Sugar badge
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.purple.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withOpacity(0.3)),
-                              ),
-                              child: Text(
-                                '${_safeToDouble(item['sugarAmount']).toStringAsFixed(1)} g',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  fontSize: itemSize * 0.9,
-                                ),
-                              ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                ),
+                      ),
 
                 SizedBox(height: 16),
 

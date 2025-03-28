@@ -124,9 +124,10 @@ class _ResultState extends State<Result> with WidgetsBindingObserver {
               image: AssetImage("assets/Background.png"),
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.3),
-                BlendMode.darken,
+                Colors.black.withOpacity(0.2),
+                BlendMode.overlay,
               ),
+              opacity: 0.7,
             ),
           ),
         ),
